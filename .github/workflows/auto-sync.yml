@@ -2,8 +2,8 @@ name: Daily Connections Sync
 
 on:
   schedule:
-    - cron: '2 23 * * *'   # 23:02 UTC every day
-  workflow_dispatch: {}     # run by hand from the Actions tab
+    - cron: '45 21 * * *'  # runs every day at 21:45 UTC
+  workflow_dispatch: {}     # (keeps the “Run workflow” button)
 
 permissions:
   contents: write
