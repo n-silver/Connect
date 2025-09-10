@@ -1,0 +1,41 @@
+{
+  "date": "2025-09-10",
+  "categories": [
+    {
+      "title": "Group 1",
+      "words": [
+        "Login / Sign Up",
+        "?",
+        "DONKEY",
+        "KONG"
+      ]
+    },
+    {
+      "title": "Group 2",
+      "words": [
+        "BAD",
+        "COBRA",
+        "BARREL",
+        "RACE"
+      ]
+    },
+    {
+      "title": "Group 3",
+      "words": [
+        "TUT",
+        "TSK",
+        "FLY",
+        "FOLEY"
+      ]
+    },
+    {
+      "title": "Group 4",
+      "words": [
+        "TUT TUT",
+        "CAKE",
+        "DOLITTLE",
+        "SHAME"
+      ]
+    }
+  ]
+}
