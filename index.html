@@ -1,0 +1,397 @@
+<!DOCTYPE html> 
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Connections</title>
+<meta name="format-detection" content="telephone=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- Montserrat font -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#fafafa; --fg:#111; --muted:#6b7280; --card:#fff; --border:#e5e7eb; --focus:#0b57d0;
+    --tile-font: 14px;     /* default size (media queries may lower this) */
+    --tile-font-min: 10px; /* minimum size when auto-fitting */
+    --tile-h: 64px;        /* uniform tile height; JS updates to tallest solved group */
+  }
+  html, body { height:100%; }
+  *, *::before, *::after { -webkit-text-fill-color: currentColor; box-sizing:border-box; }
+  body { margin:0; font-family:'Montserrat', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:var(--bg); color:var(--fg); }
+  .wrap { max-width:900px; margin:0 auto; padding:16px; }
+  h1 { margin:8px 0 12px; font-size:22px; font-weight:700; letter-spacing:.2px; }
+
+  /* Minimal toolbar/buttons */
+  .toolbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px; }
+  select, button { border:1px solid var(--border); background:var(--card); border-radius:10px; padding:8px 10px; font-size:14px; cursor:pointer; color:var(--fg); -webkit-appearance:none; appearance:none; touch-action:manipulation; }
+  a { color: inherit; text-decoration: none; }
+  button { font-weight:600; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+
+  .solved-list { display:none; }
+  .solved { border:1px solid var(--border); border-radius:12px; padding:8px 10px; font-weight:600; display:flex; flex-wrap:wrap; gap:8px; align-items:center; background:var(--card); }
+
+  .grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; max-width:680px; width:100%; margin:0 auto; }
+
+  .tile {
+    border:1px solid var(--border);
+    border-radius:14px;
+    background:var(--card);
+    font-weight:700;
+    font-size:var(--tile-font);
+    letter-spacing:.2px;
+    padding:0 10px;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 1px 2px rgba(0,0,0,.05);
+    transition: background .15s ease, border-color .15s ease, transform .15s ease;
+    user-select:none; overflow:hidden; white-space:nowrap; color: var(--fg);
+  }
+  /* Regular tiles adopt the tallest solved-group height for uniform rows */
+  .tile:not(.solved-group) { height: var(--tile-h); }
+
+  .tile:hover { background:#f3f4f6; }
+  .tile.sel { background:#efefef; border-color:var(--border); }
+  .tile.solved { opacity:.95; }
+  .tile:focus-visible { outline:2px solid var(--focus); outline-offset:2px; }
+
+  .status { margin:14px 0; font-size:14px; color:var(--muted); min-height:1.5em; text-align:center; }
+
+  /* Pastel palette (blue, yellow, pink, green) for solved groups */
+  .p-blue   { background:#e8f2ff; border-color:#cfe5ff; color:#0f253a; }
+  .p-yellow { background:#fff7cc; border-color:#ffe78a; color:#3a3200; }
+  .p-pink   { background:#ffe0ea; border-color:#ffc3d6; color:#3a0e20; }
+  .p-green  { background:#e6f7e6; border-color:#c9ebc9; color:#0f2a0f; }
+
+  /* Solved group container inside the grid */
+  .solved-group { 
+    grid-column:1 / -1; 
+    padding:12px; 
+    border-radius:14px; 
+    text-align:center; 
+    display:flex; 
+    flex-direction:column; 
+    gap:4px;            /* tighter spacing between title and answers */
+  }
+  .solved-title { 
+    font-weight:700; 
+    font-size:14px; 
+    letter-spacing:.2px; 
+    margin:0; 
+    text-align:center; 
+  }
+  /* Answers line — lighter weight, comma-separated, compact spacing */
+  .solved-answers {
+    font-weight:500;           
+    font-size:13px;
+    letter-spacing:.1px;
+    line-height:1.2;
+    margin:0;
+    padding:0 4px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  /* ===== Mobile-friendly tweaks while keeping 4 columns ===== */
+  @media (max-width: 600px) {
+    .wrap { padding:12px; }
+    .grid { gap:6px; max-width:100%; }
+    :root { --tile-font: 13px; --tile-font-min: 9px; }
+    select, button { font-size:13px; padding:8px 9px; }
+  }
+  @media (max-width: 360px) {
+    :root { --tile-font: 12px; --tile-font-min: 8px; }
+    .toolbar { gap:6px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Connections</h1>
+
+  <div class="toolbar">
+    <label for="puzzle-select" class="sr-only" style="position:absolute;left:-9999px">Choose puzzle</label>
+    <select id="puzzle-select" aria-label="Choose puzzle"></select>
+    <button id="btn-reset" title="Reset current puzzle">Reset</button>
+    <button id="btn-check" title="Check selected tiles">Check (<span id="sel-count">0</span>/4)</button>
+    <button id="btn-help" title="Reveal one random group">Help</button>
+    <button id="btn-giveup" title="Reveal all groups">Give Up</button>
+    <span id="meta" class="sub" aria-live="polite"></span>
+  </div>
+
+  <div id="solved" class="solved-list" aria-live="polite"></div>
+  <div id="grid" class="grid" role="grid" aria-label="Connections grid of 16 tiles"></div>
+  <div id="msg" class="status" aria-live="polite"></div>
+</div>
+
+<!-- ======== EMBED YOUR JSON HERE (replace the entire object) ======== -->
+<script id="conn-data" type="application/json">
+
+</script>
+<!-- ================================================================== --></script>
+<script>
+(function () {
+  // Helpers
+  const $ = (sel, root = document) => root.querySelector(sel);
+  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+  const shuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
+
+  // Pastel palette classes in the order we’ll apply to solved groups
+  const PASTELS = ['p-blue','p-yellow','p-pink','p-green'];
+
+  // State
+  let payload = null;
+  let puzzles = [];
+  let currentIndex = 0;
+  let selected = [];
+  let solvedGroups = []; // array of category objects, in solve order
+  let layout = [];       // current 16-word layout order
+
+  // Elements
+  const sel = $('#puzzle-select');
+  const grid = $('#grid');
+  const solvedList = $('#solved');
+  const btnReset = $('#btn-reset');
+  const btnCheck = $('#btn-check');
+  const btnHelp = $('#btn-help');
+  const btnGiveUp = $('#btn-giveup');
+  const selCount = $('#sel-count');
+  const msg = $('#msg');
+  const meta = $('#meta');
+
+  function loadEmbedded() {
+    try {
+      const raw = $('#conn-data').textContent || '{}';
+      payload = JSON.parse(raw);
+      puzzles = payload.puzzles ? [...payload.puzzles] : [];
+      // Newest first (by date, then number)
+      puzzles.sort((a,b) => {
+        const ad = a.date || "", bd = b.date || "";
+        if (ad === bd) return (b.nyt_number||0) - (a.nyt_number||0);
+        return ad < bd ? 1 : -1;
+      });
+    } catch (e) {
+      alert('Failed to parse embedded JSON. Make sure it is valid.');
+      console.error(e);
+    }
+  }
+
+  function populateSelect() {
+    sel.innerHTML = "";
+    puzzles.forEach((p, i) => {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = `${p.date || 'Unknown date'}${p.nyt_number ? ' (#' + p.nyt_number + ')' : ''}`;
+      sel.appendChild(opt);
+    });
+    sel.addEventListener('change', () => { currentIndex = Number(sel.value); startPuzzle(); });
+  }
+
+  // ===== Layout helpers =====
+  function wordsOfSolved() {
+    return solvedGroups.flatMap(g => g.words);
+  }
+  function isSolvedWord(w) {
+    return solvedGroups.some(g => g.words.includes(w));
+  }
+
+  function buildInitialLayout(p) {
+    const words = p.categories.flatMap(c => c.words);
+    shuffle(words);
+    layout = words;
+  }
+
+  function rebuildLayoutSolvedFirst() {
+    const solvedWords = wordsOfSolved();
+    const seen = new Set();
+    const top = [];
+    for (const g of solvedGroups) {
+      for (const w of g.words) {
+        if (!seen.has(w)) { top.push(w); seen.add(w); }
+      }
+    }
+    const rest = layout.filter(w => !seen.has(w));
+    layout = [...top, ...rest];
+  }
+
+  // --- Per-tile auto-fit (reduce font-size only if needed) ---
+  function fits(el){
+    return el.scrollWidth <= el.clientWidth && el.scrollHeight <= el.clientHeight;
+  }
+  function fitText(el){
+    // Use *current* CSS variables so media queries / user zooms apply
+    const rootStyle = getComputedStyle(document.documentElement);
+    const base = parseInt(rootStyle.getPropertyValue('--tile-font')) || 14;
+    const min  = parseInt(rootStyle.getPropertyValue('--tile-font-min')) || 10;
+
+    el.style.fontSize = base + 'px';
+    if (fits(el)) return;
+    let size = base;
+    while (size > min) {
+      size -= 1;
+      el.style.fontSize = size + 'px';
+      if (fits(el)) break;
+    }
+  }
+  function fitAllTiles(){ [...$$(".tile"), ...$$("[data-fit]")].forEach(fitText); }
+
+  // Measure tallest solved-group height and apply it to regular tiles
+  function updateUniformTileHeight(){
+    const groups = Array.from(grid.querySelectorAll('.solved-group'));
+    if (groups.length){
+      let maxH = 0;
+      for (const g of groups){
+        const h = Math.ceil(g.getBoundingClientRect().height);
+        if (h > maxH) maxH = h;
+      }
+      document.documentElement.style.setProperty('--tile-h', maxH + 'px');
+    } else {
+      document.documentElement.style.setProperty('--tile-h', '64px');
+    }
+  }
+
+  // Re-fit and re-sync heights on viewport/content changes
+  const ro = new ResizeObserver(() => {
+    fitAllTiles();
+    updateUniformTileHeight();
+  });
+
+  function renderGrid() {
+    grid.innerHTML = '';
+
+    // 1) Render solved groups (span full width)
+    solvedGroups.forEach((g, idx) => {
+      const cont = document.createElement('div');
+      cont.className = `tile solved solved-group ${PASTELS[idx] || PASTELS[PASTELS.length - 1]}`;
+      cont.style.gridColumn = '1 / -1';
+
+      const title = document.createElement('div');
+      title.className = 'solved-title';
+      title.textContent = g.title;
+
+      const answers = document.createElement('div');
+      answers.className = 'solved-answers';
+      answers.textContent = g.words.join(', ');
+
+      cont.appendChild(title);
+      cont.appendChild(answers);
+      grid.appendChild(cont);
+      ro.observe(cont);
+    });
+
+    // 2) Render remaining (unsolved) tiles
+    for (const w of layout) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'tile';
+      btn.textContent = w;
+      btn.addEventListener('click', () => toggleWord(btn, w));
+
+      grid.appendChild(btn);
+      ro.observe(btn);
+    }
+
+    fitAllTiles();
+    updateUniformTileHeight();
+  }
+
+  // ===== Game flow =====
+  function startPuzzle() {
+    selected = [];
+    solvedGroups = [];
+    $('#sel-count').textContent = '0';
+    msg.textContent = '';
+
+    const p = puzzles[currentIndex];
+    buildInitialLayout(p);
+    renderGrid();
+    meta.textContent = `Date: ${p.date || '—'}${p.nyt_number ? ' • #' + p.nyt_number : ''}`;
+  }
+
+  function clearSelectionClasses() {
+    $$('.tile.sel').forEach(n => n.classList.remove('sel'));
+  }
+
+  function toggleWord(el, word) {
+    if (isSolvedWord(word)) return;
+    const i = selected.indexOf(word);
+    if (i >= 0) {
+      selected.splice(i,1);
+      el.classList.remove('sel');
+    } else {
+      if (selected.length === 4) {
+        clearSelectionClasses();
+        selected = [word];
+        el.classList.add('sel');
+      } else {
+        selected.push(word);
+        el.classList.add('sel');
+      }
+    }
+    $('#sel-count').textContent = String(selected.length);
+  }
+
+  function checkSelection() {
+    if (selected.length !== 4) return;
+    const p = puzzles[currentIndex];
+    const pick = new Set(selected);
+    const match = p.categories.find(c => c.words.every(w => pick.has(w)));
+
+    if (match && !solvedGroups.some(g => g.title === match.title)) {
+      revealGroup(match);
+      msg.textContent = `✓ ${match.title}`;
+    } else {
+      msg.textContent = '✗ Not a group';
+      clearSelectionClasses();
+      selected = [];
+      $('#sel-count').textContent = '0';
+    }
+  }
+
+  function revealGroup(group) {
+    solvedGroups.push(group);
+    const gset = new Set(group.words);
+    layout = layout.filter(w => !gset.has(w));
+    selected = [];
+    $('#sel-count').textContent = '0';
+    renderGrid();
+    if (solvedGroups.length === 4) msg.textContent = '🎉 Completed!';
+  }
+
+  function helpSolveOne(randomize=true) {
+    const p = puzzles[currentIndex];
+    const unsolved = p.categories.filter(c => !solvedGroups.some(g => g.title === c.title));
+    if (!unsolved.length) return;
+    const group = randomize ? unsolved[Math.floor(Math.random()*unsolved.length)] : unsolved[0];
+    revealGroup(group);
+    msg.textContent = `🪄 Helped: ${group.title}`;
+  }
+
+  function giveUpRevealAll() {
+    const p = puzzles[currentIndex];
+    const unsolved = p.categories.filter(c => !solvedGroups.some(g => g.title === c.title));
+    unsolved.forEach(g => revealGroup(g));
+    msg.textContent = '👀 Revealed all answers.';
+  }
+
+  // Wire up controls
+  $('#btn-check').addEventListener('click', checkSelection);
+  $('#btn-reset').addEventListener('click', startPuzzle);
+  $('#btn-help').addEventListener('click', () => helpSolveOne(true));
+  $('#btn-giveup').addEventListener('click', giveUpRevealAll);
+
+  // Boot
+  loadEmbedded();
+  if (!puzzles.length) {
+    msg.textContent = 'No puzzles found in embedded JSON.';
+  } else {
+    populateSelect();
+    currentIndex = 0;
+    sel.value = '0';
+    startPuzzle();
+  }
+})();
+</script>
+</body>
+</html>
