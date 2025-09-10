@@ -2,7 +2,7 @@ name: Daily Connections Sync
 
 on:
   schedule:
-    - cron: '45 21 * * *'  # runs every day at 21:45 UTC
+    - cron: '2 23 * * *'  # runs every day at 23:02 UTC
   workflow_dispatch: {}     # (keeps the “Run workflow” button)
 
 permissions:
