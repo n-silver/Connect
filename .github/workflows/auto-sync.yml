@@ -28,10 +28,6 @@ jobs:
       - name: Fetch latest puzzle and update files
         run: node scripts/fetch-cu.mjs
 
-      - name: Commit & push changes
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "chore: update puzzle $(date -u +%F)" || echo "No changes"
-          git push
+ - name: Fetch latest puzzle and update files
+  run: node scripts/fetch-cu.mjs --dump-buttons --dry-run
+  
