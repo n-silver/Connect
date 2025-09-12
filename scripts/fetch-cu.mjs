@@ -19,7 +19,6 @@ const REPLAY_HAR = getArg('--replay-har', null);
 const SAVE_HAR   = getArg('--save-har', null);
 const DUMP       = args.has('--dump-buttons');
 const DRY_RUN    = args.has('--dry-run');
-const ALLOW_FALLBACK = args.has('--allow-fallback'); // only if you *really* want fake groups
 
 // ---- utils ----
 const safeJSON = s => { try { return JSON.parse(s); } catch { return null; } };
@@ -49,7 +48,7 @@ function findCategoriesAnywhere(obj) {
   return found;
 }
 
-// debug helper: tile candidates (not used for grouping)
+// ---- DOM tile extraction (debug aid + used by heuristics) ----
 async function extractWordsFromDOM(page) {
   return await page.evaluate((dump) => {
     const isVisible = (el) => {
@@ -110,6 +109,82 @@ async function extractWordsFromDOM(page) {
   }, DUMP);
 }
 
+// ---- try clicking Reveal/Give Up/Answers, then read groups from DOM ----
+async function revealAndReadGroups(page, knownWords = []) {
+  // 1) click a reveal-like button
+  const labels = [/give\s*up/i, /reveal/i, /answers?/i, /solution/i, /show/i];
+  const buttons = await page.$$('button, [role="button"], a');
+  for (const b of buttons) {
+    const txt = ((await b.innerText().catch(()=>'')) || '').trim();
+    if (labels.some(r => r.test(txt))) {
+      await b.click().catch(()=>{});
+      await page.waitForTimeout(800);
+      break;
+    }
+  }
+
+  // 2) read groups from DOM after reveal
+  return await page.evaluate((words) => {
+    const wordsSet = new Set(words || []);
+    const all = Array.from(document.querySelectorAll('*'));
+    const visibles = all.filter(el => {
+      const r = el.getBoundingClientRect();
+      const s = getComputedStyle(el);
+      return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none';
+    });
+
+    // build candidates: any container that has exactly 4 unique child texts that are in wordsSet
+    const candidates = [];
+    for (const el of visibles) {
+      const desc = Array.from(el.querySelectorAll('*'));
+      const texts = desc.map(n => (n.textContent || '').trim()).filter(Boolean);
+      const uniqueWordKids = [];
+      for (const t of texts) {
+        if (wordsSet.size ? wordsSet.has(t) : true) {
+          // If we don't know words, accept single tokens as potential words
+          if (!wordsSet.size && /\s/.test(t)) continue;
+          if (!uniqueWordKids.includes(t)) uniqueWordKids.push(t);
+        }
+      }
+      if (uniqueWordKids.length === 4) {
+        const r = el.getBoundingClientRect();
+        const area = r.width * r.height;
+        // title: first non-word short text inside container
+        let title = '';
+        for (const t of texts) {
+          if ((wordsSet.size ? !wordsSet.has(t) : /\s/.test(t)) && /[A-Za-z]/.test(t) && t.length <= 60) {
+            title = t.replace(/\s+/g, ' ').trim();
+            break;
+          }
+        }
+        candidates.push({ words: uniqueWordKids, title, area });
+      }
+    }
+
+    // dedupe by word set signature; prefer smallest area (tightest container)
+    const seen = new Set();
+    const uniq = [];
+    candidates.sort((a,b) => a.area - b.area);
+    for (const c of candidates) {
+      const sig = c.words.slice().sort().join('|');
+      if (!seen.has(sig)) { seen.add(sig); uniq.push(c); }
+      if (uniq.length >= 12) break;
+    }
+
+    // pick 4 disjoint groups that cover 16 words
+    const used = new Set();
+    const chosen = [];
+    for (const c of uniq) {
+      if (c.words.every(w => !used.has(w))) {
+        chosen.push(c);
+        c.words.forEach(w => used.add(w));
+        if (chosen.length === 4) break;
+      }
+    }
+    return chosen;
+  }, knownWords);
+}
+
 async function fetchPuzzle({ replayHar, saveHar } = {}) {
   const browser = await chromium.launch();
   const context = await browser.newContext(
@@ -126,7 +201,6 @@ async function fetchPuzzle({ replayHar, saveHar } = {}) {
       const ct = (resp.headers()['content-type'] || '').toLowerCase();
       const status = resp.status();
       if (status >= 300) return;
-      // prefer JSON parsing; fall back to text->JSON
       let j = null;
       if (ct.includes('application/json')) {
         j = await resp.json().catch(() => null);
@@ -141,14 +215,18 @@ async function fetchPuzzle({ replayHar, saveHar } = {}) {
   await page.goto(SITE, { waitUntil: 'domcontentloaded', timeout: 45000 });
   await page.waitForTimeout(6000); // let SPA boot
 
-  // 1) Try to find categories in network payloads
+  // 0) capture visible tiles (for debug + heuristics)
+  let words = [];
+  try { words = await extractWordsFromDOM(page); } catch {}
+
+  // 1) network payloads
   let categories = null;
   for (const j of payloads) {
     const cats = findCategoriesAnywhere(j);
-    if (cats) { categories = cats; break; }
+    if (cats) { categories = cats; console.log('Found categories via NETWORK'); break; }
   }
 
-  // 2) Try localStorage / sessionStorage (some sites stash puzzle JSON there)
+  // 2) storage
   if (!categories) {
     const stor = await page.evaluate(() => {
       const dump = s => {
@@ -166,31 +244,42 @@ async function fetchPuzzle({ replayHar, saveHar } = {}) {
       const obj = safeJSON(v);
       if (!obj) continue;
       const cats = findCategoriesAnywhere(obj);
-      if (cats) { categories = cats; break; }
+      if (cats) { categories = cats; console.log('Found categories via STORAGE'); break; }
     }
   }
 
-  // 3) (optional) words only for debugging
-  let words = [];
-  try { words = await extractWordsFromDOM(page); } catch {}
+  // 3) try reveal then read groups
+  if (!categories) {
+    const revealed = await revealAndReadGroups(page, words);
+    if (revealed?.length === 4 && revealed.every(g => g.words?.length === 4)) {
+      // fill missing/empty titles with generic label
+      categories = revealed.map((g, i) => ({
+        title: g.title || `Category ${i+1}`,
+        words: g.words
+      }));
+      console.log('Found categories via REVEAL DOM');
+    }
+  }
+
+  // 4) final heuristic (no reveal): group by smallest containers
+  if (!categories) {
+    const heuristic = await revealAndReadGroups(page, words.length === 16 ? words : []);
+    if (heuristic?.length === 4) {
+      categories = heuristic.map((g, i) => ({
+        title: g.title || `Category ${i+1}`,
+        words: g.words
+      }));
+      console.log('Found categories via HEURISTIC DOM');
+    }
+  }
 
   await context.close();
   await browser.close();
 
   if (!categories) {
-    console.log('Could not find categories in network/storage.');
+    console.log('Could not find categories in network, storage, reveal, or heuristics.');
     if (words?.length) console.log('Saw word candidates:', words);
-    if (!ALLOW_FALLBACK) {
-      throw new Error('Strict mode: aborting because categories were not found.');
-    }
-    // ONLY if you pass --allow-fallback do we fabricate groups (not recommended)
-    console.warn('[WARN] Falling back to fake groups due to --allow-fallback.');
-    categories = [
-      { title: 'Group 1', words: words.slice(0, 4) },
-      { title: 'Group 2', words: words.slice(4, 8) },
-      { title: 'Group 3', words: words.slice(8, 12) },
-      { title: 'Group 4', words: words.slice(12, 16) }
-    ];
+    throw new Error('Aborting: answers not found.');
   }
 
   // Build puzzle object (answers included)
@@ -199,7 +288,7 @@ async function fetchPuzzle({ replayHar, saveHar } = {}) {
     categories: categories.map(c => ({ title: c.title, words: c.words }))
   };
 
-  // tiny sanity check
+  // sanity check
   const sum = puzzle.categories.reduce((n, c) => n + c.words.length, 0);
   if (puzzle.categories.length !== 4 || sum !== 16) {
     throw new Error(`Invalid categories shape (got ${puzzle.categories.length} groups / ${sum} words).`);
