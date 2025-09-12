@@ -1,0 +1,17 @@
+name: scrape (one-off)
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm i --no-save playwright@latest
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/fetch-cu.mjs
+      
