@@ -15,12 +15,13 @@ const getArg = (name, fallback = undefined) => {
   const x = [...args].find(a => a.startsWith(name + '='));
   return x ? x.split('=').slice(1).join('=') : fallback;
 };
-const REPLAY_HAR = getArg('--replay-har', null); // path to .har to replay
-const SAVE_HAR   = getArg('--save-har', null);   // path to save .har
-const DUMP       = args.has('--dump-buttons');   // log all candidate button texts
-const DRY_RUN    = args.has('--dry-run');        // don't write files
+const REPLAY_HAR = getArg('--replay-har', null);
+const SAVE_HAR   = getArg('--save-har', null);
+const DUMP       = args.has('--dump-buttons');
+const DRY_RUN    = args.has('--dry-run');
+const ALLOW_FALLBACK = args.has('--allow-fallback'); // only if you *really* want fake groups
 
-// ---- small utils ----
+// ---- utils ----
 const safeJSON = s => { try { return JSON.parse(s); } catch { return null; } };
 const uniqBy = (arr, key) => {
   const seen = new Set(); const out = [];
@@ -28,7 +29,7 @@ const uniqBy = (arr, key) => {
   return out;
 };
 
-// Heuristic: locate { categories:[{title,words:[4]} x4] } anywhere inside a JSON object
+// find { categories:[ {title,words:[4]} x4 ] } anywhere inside an object
 function findCategoriesAnywhere(obj) {
   let found = null;
   const visit = (v) => {
@@ -48,23 +49,21 @@ function findCategoriesAnywhere(obj) {
   return found;
 }
 
-// Extract words from DOM when network JSON isn’t found
+// debug helper: tile candidates (not used for grouping)
 async function extractWordsFromDOM(page) {
   return await page.evaluate((dump) => {
     const isVisible = (el) => {
-      const rect = el.getBoundingClientRect();
-      const style = window.getComputedStyle(el);
-      return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none';
+      const r = el.getBoundingClientRect();
+      const s = getComputedStyle(el);
+      return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none';
     };
-
-    // gather **visible** button-like elements
     const btns = Array.from(document.querySelectorAll('button, [role="button"]')).filter(isVisible);
 
-    // Group buttons by the nearest ancestor that contains lots of buttons (>= 12)
+    // group by ancestor with lots of buttons, pick largest
     const groups = new Map();
     for (const b of btns) {
       let a = b.parentElement, host = null;
-      for (let depth = 0; a && depth < 6; depth++, a = a.parentElement) {
+      for (let d = 0; a && d < 6; d++, a = a.parentElement) {
         const count = a.querySelectorAll('button, [role="button"]').length;
         if (count >= 12) { host = a; break; }
       }
@@ -72,46 +71,35 @@ async function extractWordsFromDOM(page) {
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push(b);
     }
-
-    // pick the largest cluster
     let best = null, max = 0;
     for (const arr of groups.values()) if (arr.length > max) { max = arr.length; best = arr; }
 
-    // texts for debugging
     if (dump) {
       console.log('--- All candidate buttons (visible) ---');
       for (const el of btns) console.log('BTN:', (el.textContent || '').trim());
     }
 
     const IGNORES = [
-      /login/i, /sign\s*up/i, /register/i, /menu/i, /share/i, /settings?/i, /account/i,
+      /login/i, /sign\s*up/i, /register/i, /profile/i, /menu/i, /share/i, /settings?/i, /account/i,
       /hint/i, /help/i, /give\s*up/i, /reset/i, /check/i, /new/i, /start/i, /today/i,
-      /archive/i, /daily/i, /random/i
+      /archive/i, /daily/i, /random/i,
+      /^\?$/, /^…$/, /\//
     ];
 
-    const rawTexts = (best || []).map(el => {
+    const raw = (best || []).map(el => {
       const t = (el.textContent || '').trim();
-      const rect = el.getBoundingClientRect();
-      return { t, w: rect.width, h: rect.height };
+      const r = el.getBoundingClientRect();
+      return { t, w: r.width, h: r.height };
     });
 
-    // Filter rules:
-    //  - non-empty
-    //  - not "?" or "…" or a slashy label like "Login / Sign Up"
-    //  - not matching common nav/action words
-    //  - **single word** (no spaces) – Connections tiles are single tokens
-    //  - reasonable length & size (avoid tiny icons)
-    let texts = rawTexts
+    let texts = raw
       .filter(x => !!x.t)
-      .filter(x => x.t !== '?' && x.t !== '…')
-      .filter(x => !x.t.includes('/'))
       .filter(x => !IGNORES.some(r => r.test(x.t)))
       .filter(x => !/\s/.test(x.t))        // single token
-      .filter(x => x.t.length >= 2 && x.t.length <= 14)
-      .filter(x => x.w >= 50 && x.h >= 40) // probably a tile, not a tiny icon
+      .filter(x => x.t.length >= 2 && x.t.length <= 18)
+      .filter(x => x.w >= 50 && x.h >= 40) // avoid tiny icons
       .map(x => x.t);
 
-    // Deduplicate & cap at 16
     texts = Array.from(new Set(texts)).slice(0, 16);
 
     if (dump) {
@@ -127,55 +115,95 @@ async function fetchPuzzle({ replayHar, saveHar } = {}) {
   const context = await browser.newContext(
     saveHar ? { recordHar: { path: saveHar, content: 'embed', mode: 'minimal' } } : {}
   );
-  if (replayHar) {
-    await context.routeFromHAR(replayHar, { notFound: 'abort' });
-  }
+  if (replayHar) await context.routeFromHAR(replayHar, { notFound: 'abort' });
 
   const page = await context.newPage();
-  const jsonPayloads = [];
+
+  // collect ALL responses and try parsing JSON even if content-type is wrong
+  const payloads = [];
   page.on('response', async (resp) => {
     try {
       const ct = (resp.headers()['content-type'] || '').toLowerCase();
-      if (!ct.includes('application/json')) return;
-      const j = await resp.json().catch(() => null);
-      if (j) jsonPayloads.push(j);
+      const status = resp.status();
+      if (status >= 300) return;
+      // prefer JSON parsing; fall back to text->JSON
+      let j = null;
+      if (ct.includes('application/json')) {
+        j = await resp.json().catch(() => null);
+      } else {
+        const txt = await resp.text().catch(() => '');
+        if (txt && /"categories"\s*:/.test(txt)) j = safeJSON(txt);
+      }
+      if (j) payloads.push(j);
     } catch {}
   });
 
   await page.goto(SITE, { waitUntil: 'domcontentloaded', timeout: 45000 });
-  await page.waitForTimeout(6000); // let SPA settle
+  await page.waitForTimeout(6000); // let SPA boot
 
-  // Try to find categories from any JSON first (best quality)
+  // 1) Try to find categories in network payloads
   let categories = null;
-  for (const j of jsonPayloads) {
+  for (const j of payloads) {
     const cats = findCategoriesAnywhere(j);
     if (cats) { categories = cats; break; }
   }
 
-  // Fallback: DOM words (robust filters)
-  let words = [];
+  // 2) Try localStorage / sessionStorage (some sites stash puzzle JSON there)
   if (!categories) {
-    words = await extractWordsFromDOM(page);
+    const stor = await page.evaluate(() => {
+      const dump = s => {
+        const out = [];
+        for (let i = 0; i < s.length; i++) {
+          const k = s.key(i);
+          const v = s.getItem(k);
+          out.push([k, v]);
+        }
+        return out;
+      };
+      return { ls: dump(localStorage), ss: dump(sessionStorage) };
+    });
+    for (const [k, v] of [...stor.ls, ...stor.ss]) {
+      const obj = safeJSON(v);
+      if (!obj) continue;
+      const cats = findCategoriesAnywhere(obj);
+      if (cats) { categories = cats; break; }
+    }
   }
+
+  // 3) (optional) words only for debugging
+  let words = [];
+  try { words = await extractWordsFromDOM(page); } catch {}
 
   await context.close();
   await browser.close();
 
-  if (!categories && words.length !== 16) {
-    throw new Error(`Could not capture 16 words (got ${words.length}).`);
+  if (!categories) {
+    console.log('Could not find categories in network/storage.');
+    if (words?.length) console.log('Saw word candidates:', words);
+    if (!ALLOW_FALLBACK) {
+      throw new Error('Strict mode: aborting because categories were not found.');
+    }
+    // ONLY if you pass --allow-fallback do we fabricate groups (not recommended)
+    console.warn('[WARN] Falling back to fake groups due to --allow-fallback.');
+    categories = [
+      { title: 'Group 1', words: words.slice(0, 4) },
+      { title: 'Group 2', words: words.slice(4, 8) },
+      { title: 'Group 3', words: words.slice(8, 12) },
+      { title: 'Group 4', words: words.slice(12, 16) }
+    ];
   }
 
+  // Build puzzle object (answers included)
   const puzzle = {
     date: today,
-    categories: categories
-      ? categories.map(c => ({ title: c.title, words: c.words }))
-      : [
-          { title: 'Group 1', words: words.slice(0, 4) },
-          { title: 'Group 2', words: words.slice(4, 8) },
-          { title: 'Group 3', words: words.slice(8, 12) },
-          { title: 'Group 4', words: words.slice(12, 16) }
-        ]
+    categories: categories.map(c => ({ title: c.title, words: c.words }))
   };
+
+  // tiny sanity check
+  const sum = puzzle.categories.reduce((n, c) => n + c.words.length, 0);
+  if (puzzle.categories.length !== 4 || sum !== 16) {
+    throw new Error(`Invalid categories shape (got ${puzzle.categories.length} groups / ${sum} words).`);
+  }
 
   return puzzle;
 }
