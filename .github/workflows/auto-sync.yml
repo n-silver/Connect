@@ -2,8 +2,8 @@ name: Connections Sync (DRY RUN)
 
 on:
   schedule:
-    - cron: "2 23 * * *"   # 23:02 UTC daily; safe in dry-run
-  workflow_dispatch:
+    - cron: '2 23 * * *'   # 23:02 UTC daily
+  workflow_dispatch: {}
 
 permissions:
   contents: write
@@ -18,12 +18,13 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '20'
 
-      - name: Install Playwright (module and browser)
-        run: |
-          npm i --no-save playwright@latest
-          npx playwright install --with-deps chromium
+      - name: Install Playwright module
+        run: npm i --no-save playwright@latest
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
 
       - name: Fetch latest puzzle (dry run: logs only)
         run: node scripts/fetch-cu.mjs --dump-buttons --dry-run
