@@ -2,37 +2,30 @@
 import { chromium } from "playwright";
 
 const URL = "https://www.nytimes.com/games/connections";
-
-// --- small helpers ---
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-async function clickFirstButtonWithText(page, patterns, opts = {}) {
-  // patterns: array of regexps to match button text (case-insensitive)
-  const timeout = opts.timeout ?? 5000;
-  const deadline = Date.now() + timeout;
+const CONTROL_PATTERNS = [
+  /submit/i, /shuffle/i, /deselect/i, /undo/i, /hint/i, /help/i, /how to/i,
+  /back to puzzle/i, /play/i, /continue/i, /accept/i, /agree/i, /settings?/i,
+  /menu/i, /share/i, /login/i, /sign/i, /give up/i, /reveal/i, /new/i, /archive/i
+];
 
+function tokenish(s) {
+  return !!s && !/\s/.test(s) && s.length >= 1 && s.length <= 30 && /[A-Za-z]/.test(s);
+}
+
+async function clickFirstButtonWithTextInAllFrames(page, regexes, timeout = 10000) {
+  const deadline = Date.now() + timeout;
   while (Date.now() < deadline) {
-    // search in main page
-    const buttons = await page.$$('button, [role="button"], a[role="button"], a');
-    for (const b of buttons) {
-      const t = ((await b.innerText().catch(()=>'')) || '').trim();
-      for (const re of patterns) {
-        if (re.test(t)) {
-          await b.click({ force: true }).catch(()=>{});
+    const frames = page.frames();
+    for (const fr of frames) {
+      const els = await fr.$$('button, [role="button"], a[role="button"], a');
+      for (const el of els) {
+        const txt = ((await el.innerText().catch(()=>'')) || '').trim();
+        if (!txt) continue;
+        if (regexes.some(re => re.test(txt))) {
+          await el.click({ force: true }).catch(()=>{});
           return true;
-        }
-      }
-    }
-    // search in iframes (cookie banners often live in frames)
-    for (const frame of page.frames()) {
-      const fbuttons = await frame.$$('button, [role="button"], a[role="button"], a');
-      for (const b of fbuttons) {
-        const t = ((await b.innerText().catch(()=>'')) || '').trim();
-        for (const re of patterns) {
-          if (re.test(t)) {
-            await b.click({ force: true }).catch(()=>{});
-            return true;
-          }
         }
       }
     }
@@ -41,200 +34,190 @@ async function clickFirstButtonWithText(page, patterns, opts = {}) {
   return false;
 }
 
-async function getVisibleTileButtons(page) {
-  // Find the 16 tile buttons by visibility and “word-like” text, excluding controls.
-  return await page.$$eval('button, [role="button"]', (els) => {
-    const isVisible = (el) => {
-      const r = el.getBoundingClientRect();
-      const s = getComputedStyle(el);
-      return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none';
-    };
-
-    const CONTROL_PATTERNS = [
-      /submit/i, /shuffle/i, /deselect/i, /undo/i, /hint/i, /help/i, /how to/i,
-      /back to puzzle/i, /play/i, /continue/i, /accept/i, /agree/i, /settings?/i,
-      /menu/i, /share/i, /login/i, /sign/i, /give up/i, /reveal/i, /new/i, /archive/i
-    ];
-
-    const tokens = [];
-    for (const el of els) {
-      if (!isVisible(el)) continue;
-      const text = (el.textContent || '').trim();
-      if (!text) continue;
-      if (CONTROL_PATTERNS.some(re => re.test(text))) continue;
-      // Connections tiles are usually single tokens (no spaces)
-      if (/\s/.test(text)) continue;
-      if (text.length < 1 || text.length > 20) continue;
-      // Avoid lone punctuation
-      if (/^[?.…/\\]+$/.test(text)) continue;
-      const r = el.getBoundingClientRect();
-      // Avoid tiny icons
-      if (r.width < 48 || r.height < 38) continue;
-      tokens.push({ text, bbox: r });
-    }
-
-    // Dedup by text, keep up to 16
-    const seen = new Set();
-    const result = [];
-    for (const t of tokens) {
-      if (seen.has(t.text)) continue;
-      seen.add(t.text);
-      result.push(t.text);
-      if (result.length === 16) break;
-    }
-    return result;
-  });
+async function collectTileHandlesInFrame(frame) {
+  // Return element handles for visible, word-like tiles (exclude controls)
+  const handles = await frame.$$('button, [role="button"]');
+  const tiles = [];
+  for (const h of handles) {
+    const box = await h.boundingBox().catch(()=>null);
+    if (!box || box.width < 48 || box.height < 38) continue; // skip tiny ui
+    const text = ((await h.innerText().catch(()=>'')) || '').trim();
+    if (!text) continue;
+    if (CONTROL_PATTERNS.some(re => re.test(text))) continue;
+    // Tiles tend to be one token; loosen if needed, but this avoids nav
+    if (!tokenish(text)) continue;
+    tiles.push({ handle: h, text });
+  }
+  // Dedup by text; keep first instance
+  const seen = new Set();
+  const out = [];
+  for (const t of tiles) {
+    if (seen.has(t.text)) continue;
+    seen.add(t.text);
+    out.push(t);
+  }
+  return out;
 }
 
-async function clickTileByText(page, word) {
-  // Click the first visible button matching the word exactly
-  const candidates = await page.$$('button, [role="button"]');
-  for (const el of candidates) {
-    const t = ((await el.innerText().catch(()=>'')) || '').trim();
-    if (t === word) {
-      const box = await el.boundingBox().catch(()=>null);
-      if (box && box.width >= 1 && box.height >= 1) {
-        await el.click({ force: true }).catch(()=>{});
-        return true;
-      }
+async function findGameFrameWithTiles(page, minTiles = 12, totalWaitMs = 20000) {
+  const deadline = Date.now() + totalWaitMs;
+  while (Date.now() < deadline) {
+    const frames = page.frames();
+    for (const fr of frames) {
+      try {
+        const tiles = await collectTileHandlesInFrame(fr);
+        if (tiles.length >= minTiles) {
+          console.log(`[INFO] Found ${tiles.length} tile-like buttons in a frame: ${fr.url()}`);
+          return { frame: fr, tiles };
+        }
+      } catch {}
     }
+    await sleep(500);
   }
-  return false;
+  return null;
 }
 
-async function submitSelection(page) {
-  // Try to click a “Submit” button
-  const ok = await clickFirstButtonWithText(page, [/^submit$/i], { timeout: 4000 });
-  if (!ok) {
-    // Some UIs replace button text with an icon; try role=button with aria-label
-    const btn = await page.$('button[aria-label*="Submit" i], [role="button"][aria-label*="Submit" i]');
-    if (btn) await btn.click({ force: true }).catch(()=>{});
+async function submitSelectionInFrame(frame) {
+  // Prefer exact "Submit", but try aria-label as well
+  const btns = await frame.$$('button, [role="button"]');
+  for (const b of btns) {
+    const t = ((await b.innerText().catch(()=>'')) || '').trim();
+    if (/^submit$/i.test(t)) {
+      await b.click({ force: true }).catch(()=>{});
+      await sleep(800);
+      return true;
+    }
   }
-  // brief pause for animations
+  const alt = await frame.$('button[aria-label*="Submit" i], [role="button"][aria-label*="Submit" i]');
+  if (alt) {
+    await alt.click({ force: true }).catch(()=>{});
+    await sleep(800);
+    return true;
+  }
+  // As a last resort, try from all frames
+  const ok = await clickFirstButtonWithTextInAllFrames(frame.page(), [/^submit$/i], 3000);
   await sleep(800);
+  return ok;
 }
 
-async function scrapeSummary(page) {
-  // After finishing/losing & hitting “Back to Puzzle”, the four groups are shown.
-  // Heuristic: find containers that contain exactly 4 distinct word-like tokens,
-  // and a short title (non-token) above them.
-  return await page.evaluate(() => {
-    const isVisible = (el) => {
-      const r = el.getBoundingClientRect();
-      const s = getComputedStyle(el);
-      return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none';
-    };
-    const all = Array.from(document.querySelectorAll('*')).filter(isVisible);
+async function backToPuzzle(page) {
+  await clickFirstButtonWithTextInAllFrames(page, [/^back to puzzle$/i, /^back$/i], 8000).catch(()=>{});
+}
 
-    const tokenish = (s) => !!s && !/\s/.test(s) && s.length >= 1 && s.length <= 30 && /[A-Za-z]/.test(s);
-    const notTokenish = (s) => !!s && (/\s/.test(s) || s.length > 30) && /[A-Za-z]/.test(s);
+async function scrapeSummaryFromAllFrames(page) {
+  // Return array of 4 groups: { title, words }
+  const frames = page.frames();
+  for (const fr of frames) {
+    const groups = await fr.evaluate(() => {
+      const isVisible = (el) => {
+        const r = el.getBoundingClientRect();
+        const s = getComputedStyle(el);
+        return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none';
+      };
+      const all = Array.from(document.querySelectorAll('*')).filter(isVisible);
+      const tokenish = (s) => !!s && !/\s/.test(s) && s.length >= 1 && s.length <= 30 && /[A-Za-z]/.test(s);
+      const notTokenish = (s) => !!s && (/\s/.test(s) || s.length > 30) && /[A-Za-z]/.test(s);
 
-    const groups = [];
-    for (const el of all) {
-      const texts = Array.from(el.querySelectorAll('*'))
-        .map(n => (n.textContent || '').trim())
-        .filter(Boolean);
+      const groups = [];
+      for (const el of all) {
+        const texts = Array.from(el.querySelectorAll('*'))
+          .map(n => (n.textContent || '').trim())
+          .filter(Boolean);
 
-      // candidate words: token-like strings (single words)
-      const words = [];
-      for (const t of texts) if (tokenish(t) && !words.includes(t)) words.push(t);
-      if (words.length !== 4) continue;
+        const words = [];
+        for (const t of texts) if (tokenish(t) && !words.includes(t)) words.push(t);
+        if (words.length !== 4) continue;
 
-      // title: first non-tokenish, reasonably short text in the same container
-      let title = '';
-      for (const t of texts) {
-        if (notTokenish(t) && t.length <= 60) { title = t.replace(/\s+/g, ' ').trim(); break; }
+        let title = '';
+        for (const t of texts) {
+          if (notTokenish(t) && t.length <= 80) { title = t.replace(/\s+/g,' ').trim(); break; }
+        }
+        if (!title) continue;
+
+        const r = el.getBoundingClientRect();
+        const area = r.width * r.height;
+        if (area < 10000) continue;
+
+        groups.push({ title, words, area });
       }
-      if (!title) continue;
-
-      // bounding box heuristic: ignore tiny or huge containers
-      const r = el.getBoundingClientRect();
-      const area = r.width * r.height;
-      if (area < 10_000) continue;
-
-      groups.push({ title, words, area });
+      // Dedup by word signature, prefer tighter containers
+      const bySig = new Map();
+      for (const g of groups) {
+        const sig = g.words.slice().sort().join('|');
+        if (!bySig.has(sig) || g.area < bySig.get(sig).area) bySig.set(sig, g);
+      }
+      const uniq = Array.from(bySig.values()).sort((a,b) => a.area - b.area);
+      // keep top 4
+      return uniq.slice(0,4).map(g => ({ title: g.title, words: g.words }));
+    }).catch(()=>[]);
+    if (groups && groups.length === 4 && groups.every(g => Array.isArray(g.words) && g.words.length === 4)) {
+      console.log(`[INFO] Summary found in frame: ${fr.url()}`);
+      return groups;
     }
-
-    // Dedup by word signature, keep smallest area (tightest group containers)
-    const bySig = new Map();
-    for (const g of groups) {
-      const sig = g.words.slice().sort().join('|');
-      if (!bySig.has(sig) || g.area < bySig.get(sig).area) bySig.set(sig, g);
-    }
-    const uniq = Array.from(bySig.values());
-
-    // If more than 4 candidates, pick the 4 with smallest area (usually the four groups)
-    uniq.sort((a, b) => a.area - b.area);
-    const chosen = uniq.slice(0, 4).map(g => ({ title: g.title, words: g.words }));
-
-    return chosen;
-  });
+  }
+  return [];
 }
 
 async function run() {
-  const browser = await chromium.launch();
-  const page = await browser.newPage();
+  const browser = await chromium.launch({ headless: true });
+  const page = await browser.newPage({
+    viewport: { width: 1360, height: 900 },
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36'
+  });
 
-  // 1) Open page
+  console.log('[STEP] goto');
   await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await sleep(1000);
 
-  // 2) Accept cookies (banner + possible iframe)
-  await clickFirstButtonWithText(page, [/^accept all$/i, /^agree$/i, /^accept$/i], { timeout: 8000 }).catch(()=>{});
+  console.log('[STEP] accept cookies (if present)');
+  await clickFirstButtonWithTextInAllFrames(page, [/^accept all$/i, /^agree$/i, /^accept$/i], 12000);
 
-  // 3) Click Play (start game)
-  const played = await clickFirstButtonWithText(page, [/^play$/i, /^continue$/i], { timeout: 12000 });
-  if (!played) {
-    // Sometimes the game is already visible for returning visitors
-    // carry on if we can see tiles
+  console.log('[STEP] click Play (or Continue)');
+  await clickFirstButtonWithTextInAllFrames(page, [/^play$/i, /^continue$/i], 15000);
+
+  console.log('[STEP] find game frame + tiles');
+  const found = await findGameFrameWithTiles(page, 12, 25000);
+  if (!found) throw new Error('Could not find tile buttons in any frame.');
+  const game = found.frame;
+
+  // Refresh handles each round (DOM can re-render)
+  const rounds = [
+    (tiles) => tiles.slice(0, 4).map(t => t.handle),
+    (tiles) => [tiles[0].handle, tiles[1].handle, tiles[2].handle, tiles[4].handle],
+    (tiles) => [tiles[0].handle, tiles[1].handle, tiles[4].handle, tiles[5].handle],
+    (tiles) => [tiles[0].handle, tiles[4].handle, tiles[5].handle, tiles[6].handle],
+  ];
+
+  for (let r = 0; r < 4; r++) {
+    // If the game already ended early (e.g., we accidentally guessed right), continue anyway
+    const tiles = await collectTileHandlesInFrame(game);
+    if (tiles.length < 7) console.warn(`[WARN] only ${tiles.length} tiles detected this round`);
+
+    const pick = rounds[r](tiles);
+    console.log(`[STEP] round ${r+1} click ${pick.length} tiles`);
+    for (const h of pick) { await h.click({ force: true }).catch(()=>{}); await sleep(120); }
+
+    console.log('[STEP] submit');
+    await submitSelectionInFrame(game);
+    await sleep(800);
   }
 
-  // 4) Wait for tiles to be visible & collect their texts
-  let words = [];
-  for (let i = 0; i < 20; i++) {
-    words = await getVisibleTileButtons(page).catch(()=>[]);
-    if (words.length >= 12) break;
-    await sleep(500);
-  }
-  if (words.length < 12) throw new Error(`Could not find enough tiles (found ${words.length}).`);
-  // Ensure we have up to 16
-  if (words.length > 16) words = words.slice(0, 16);
-
-  // 5) Make 4 submissions: first 4, then change 1 tile each time to ensure at least one unique tile
-  const picks = [];
-  // Make sure we have at least 7 tiles to rotate (we should)
-  const needed = 7;
-  if (words.length < needed) throw new Error("Not enough tiles to vary picks.");
-
-  picks.push(words.slice(0, 4));
-  picks.push([...words.slice(0, 3), words[4]]);
-  picks.push([...words.slice(0, 2), words[4], words[5]]);
-  picks.push([words[0], words[4], words[5], words[6]]);
-
-  for (const group of picks) {
-    // click the 4 words
-    for (const w of group) {
-      await clickTileByText(page, w);
-      await sleep(120);
-    }
-    await submitSelection(page);
-    await sleep(500);
-  }
-
-  // 6) Wait a bit (animations, result view)
+  console.log('[STEP] wait 5s');
   await sleep(5000);
 
-  // 7) Back to Puzzle (if present)
-  await clickFirstButtonWithText(page, [/^back to puzzle$/i, /^back$/i], { timeout: 5000 }).catch(()=>{});
+  console.log('[STEP] back to puzzle (if shown)');
+  await backToPuzzle(page);
 
-  // 8) Scrape the four revealed categories + words
-  const summary = await scrapeSummary(page);
-  console.log(JSON.stringify({ date: new Date().toISOString().slice(0,10), groups: summary }, null, 2));
+  console.log('[STEP] scrape summary');
+  const groups = await scrapeSummaryFromAllFrames(page);
+  if (!groups.length) throw new Error('Failed to scrape summary groups.');
+  const out = { date: new Date().toISOString().slice(0,10), groups };
+  console.log(JSON.stringify(out, null, 2));
 
   await browser.close();
 }
 
 run().catch(async (err) => {
-  console.error(err);
+  console.error('[ERROR]', err);
   process.exit(1);
 });
