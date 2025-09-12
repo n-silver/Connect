@@ -1,9 +1,9 @@
-name: Daily Connections Sync (DRY RUN)
+name: Connections Sync (DRY RUN)
 
 on:
   schedule:
-    - cron: '2 23 * * *'   # 23:02 UTC daily (safe during dry-run; it won't modify files)
-  workflow_dispatch: {}     # lets you run it manually from the Actions tab
+    - cron: "2 23 * * *"   # 23:02 UTC daily; safe in dry-run
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -11,30 +11,19 @@ permissions:
 jobs:
   sync:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repo
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: 20
 
-      - name: Install Playwright
+      - name: Install Playwright (module and browser)
         run: |
-          npm i --no-audit --no-fund playwright@latest
+          npm i --no-save playwright@latest
           npx playwright install --with-deps chromium
 
-      # 🔎 Debug run: logs all candidate/filtered tiles, does NOT write files
-      - name: Fetch latest puzzle (dry-run: logs only)
+      - name: Fetch latest puzzle (dry run: logs only)
         run: node scripts/fetch-cu.mjs --dump-buttons --dry-run
-
-      # No-op during dry-run (kept for completeness)
-      - name: Commit & push changes (no-op in dry-run)
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "chore: dry-run sync $(date -u +%F)" || echo "No changes"
-          git push
