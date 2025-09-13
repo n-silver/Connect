@@ -1,5 +1,3 @@
-name: Daily Connections (CMT)
-
 on:
   schedule:
     - cron: '2 23 * * *'   # 23:02 UTC (site updates ~23:01 UTC)
@@ -19,7 +17,7 @@ jobs:
       - run: npm i --no-save playwright@latest
       - run: npx playwright install --with-deps chromium
       - name: Fetch + update files
-        run: node scripts/fetch-cmt.mjs
+        run: node scripts/fetch-cu.mjs
       - name: Commit & push
         run: |
           git config user.name "github-actions[bot]"
