@@ -1,10 +1,15 @@
-name: scrape (one-off)
+name: Daily Connections (CMT)
 
 on:
+  schedule:
+    - cron: '2 23 * * *'   # 23:02 UTC (site updates ~23:01 UTC)
   workflow_dispatch: {}
 
+permissions:
+  contents: write
+
 jobs:
-  scrape:
+  sync:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -13,5 +18,12 @@ jobs:
           node-version: '20'
       - run: npm i --no-save playwright@latest
       - run: npx playwright install --with-deps chromium
-      - run: node scripts/fetch-cu.mjs
-      
+      - name: Fetch + update files
+        run: node scripts/fetch-cmt.mjs
+      - name: Commit & push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: update connections (CMT) $(date -u +%F)" || echo "No changes"
+          git push
