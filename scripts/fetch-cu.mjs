@@ -1,3 +1,71 @@
+// scripts/fetch-cmt.mjs
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { chromium } from 'playwright';
+
+const URL = 'https://capitalizemytitle.com/todays-nyt-connections-answers/';
+const ROOT = process.cwd();
+const INDEX = path.join(ROOT, 'index.html');
+const PUZZLES_DIR = path.join(ROOT, 'puzzles');
+const todayUTC = new Date().toISOString().slice(0, 10);
+
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+const safeJSON = (s) => { try { return JSON.parse(s); } catch { return null; } };
+const uniqBy = (arr, key) => { const seen = new Set(); const out=[]; for (const x of arr){ const k=key(x); if(!seen.has(k)){ seen.add(k); out.push(x);} } return out; };
+
+const cleanTitle = (s) => (s || '').replace(/[“”"’]+/g, '').replace(/\s+/g, ' ').trim();
+const cleanWord  = (s) => (s || '').replace(/[“”"’]+/g, '').replace(/[^A-Za-z'’-]/g,'').trim();
+const isWord     = (s) => /^[A-Za-z][A-Za-z'’-]*$/.test(s);
+
+async function acceptCookies(page) {
+  // Click common consent buttons (top page or iframes)
+  const labels = [/^accept all$/i, /^accept$/i, /^agree$/i, /^ok$/i, /^i agree$/i];
+  const deadline = Date.now() + 8000;
+  while (Date.now() < deadline) {
+    for (const fr of page.frames()) {
+      const btns = await fr.$$('button, [role="button"]');
+      for (const b of btns) {
+        const t = ((await b.innerText().catch(()=>'')) || '').trim();
+        if (labels.some(re => re.test(t))) { await b.click({ force: true }).catch(()=>{}); return; }
+      }
+    }
+    await sleep(300);
+  }
+}
+
+async function expandColorAccordions(page) {
+  // Scroll to the "Today's ..." heading, then click any toggles containing the color names
+  const head = page.getByRole('heading', { name: /today'?s nyt connections puzzle answer/i }).first();
+  try { await head.scrollIntoViewIfNeeded(); } catch {}
+
+  const colors = ['Yellow', 'Green', 'Blue', 'Purple'];
+
+  // Try several common toggle selectors right under that heading section
+  for (const color of colors) {
+    // Limit search to nodes following the heading to avoid clicking unrelated items
+    const toggle = page.locator(
+      `xpath=(//h1|//h2|//h3|//h4)[contains(translate(normalize-space(.),"abcdefghijklmnopqrstuvwxyz","ABCDEFGHIJKLMNOPQRSTUVWXYZ"),"TODAY'S NYT CONNECTIONS PUZZLE ANSWER")][1]/following::*[
+        self::button or @role="button" or self::summary or contains(@class,'accordion') or contains(@class,'toggle') or contains(@class,'spoiler') or contains(@class,'elementor-tab')
+      ][contains(translate(normalize-space(.),"abcdefghijklmnopqrstuvwxyz","ABCDEFGHIJKLMNOPQRSTUVWXYZ"), "${color.toUpperCase()}")][1]`
+    ).first();
+
+    await toggle.click({ timeout: 2000 }).catch(()=>{});
+    await sleep(200);
+  }
+
+  // Safety: also click any “Show/Reveal Answer” toggles under the section
+  const expanders = page.locator(
+    `xpath=(//h1|//h2|//h3|//h4)[contains(translate(normalize-space(.),"abcdefghijklmnopqrstuvwxyz","ABCDEFGHIJKLMNOPQRSTUVWXYZ"),"TODAY'S NYT CONNECTIONS PUZZLE ANSWER")][1]/following::*[
+      self::button or @role="button" or self::summary
+    ][contains(translate(normalize-space(.),"abcdefghijklmnopqrstuvwxyz","ABCDEFGHIJKLMNOPQRSTUVWXYZ"), "ANSWER")]`
+  );
+  const n = await expanders.count().catch(()=>0);
+  for (let i = 0; i < n; i++) {
+    await expanders.nth(i).click({ timeout: 1000 }).catch(()=>{});
+    await sleep(120);
+  }
+}
+
 async function parseOpenedSections(page) {
   // Read the four color sections (opened) just below the "Today's ..." heading.
   return await page.evaluate(() => {
@@ -138,3 +206,57 @@ async function parseOpenedSections(page) {
     };
   });
 }
+
+async function fetchTodayFromCMT() {
+  const browser = await chromium.launch({ headless: true });
+  const page = await browser.newPage({
+    viewport: { width: 1280, height: 900 },
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36'
+  });
+
+  await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await sleep(1200);
+
+  await acceptCookies(page).catch(()=>{});
+  await expandColorAccordions(page);
+  await sleep(300);
+
+  const result = await parseOpenedSections(page);
+  await browser.close();
+
+  if (!result) throw new Error('Could not parse 4 opened color sections with 4 words each.');
+  return result;
+}
+
+async function updateFiles(puzzle) {
+  await fs.mkdir(PUZZLES_DIR, { recursive: true });
+  await fs.writeFile(path.join(PUZZLES_DIR, `${puzzle.date}.json`), JSON.stringify(puzzle, null, 2));
+  await fs.writeFile(path.join(PUZZLES_DIR, `latest.json`), JSON.stringify(puzzle, null, 2));
+
+  // Update embedded archive in index.html
+  const html = await fs.readFile(INDEX, 'utf8');
+  const m = html.match(/<script id="conn-data" type="application\/json">\s*([\s\S]*?)\s*<\/script>/);
+  const current = m ? (safeJSON(m[1].trim()) || { puzzles: [] }) : { puzzles: [] };
+  const puzzles = Array.isArray(current.puzzles) ? current.puzzles : [];
+  const merged = uniqBy([{ date: puzzle.date, categories: puzzle.categories }, ...puzzles], p => p.date);
+  const payload = JSON.stringify({ puzzles: merged }, null, 2);
+  const replacement = `<script id="conn-data" type="application/json">\n${payload}\n</script>`;
+  const nextHtml = html.replace(/<script id="conn-data" type="application\/json">[\s\S]*?<\/script>/, replacement);
+  await fs.writeFile(INDEX, nextHtml, 'utf8');
+}
+
+async function main() {
+  const DRY = process.argv.includes('--dry-run');
+  const puzzle = await fetchTodayFromCMT();
+
+  if (DRY) {
+    console.log('[DRY RUN] Parsed puzzle from CapitalizeMyTitle:');
+    console.log(JSON.stringify(puzzle, null, 2));
+    return;
+  }
+
+  await updateFiles(puzzle);
+  console.log(`[OK] Saved ${puzzle.date} (latest + archive) and updated index.html`);
+}
+
+main().catch(err => { console.error(err); process.exit(1); });
