@@ -1,0 +1,47 @@
+name: Daily Scrape
+
+on:
+  schedule:
+    - cron: '2 23 * * *'   # 23:02 UTC (site posts ~23:01)
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+# Optional: avoid overlapping runs if you ever trigger manually near the cron time
+concurrency:
+  group: daily-cmt
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright
+        run: npm i --no-save playwright@latest
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Fetch + update files
+        run: node scripts/fetch-cmt.mjs   # <-- updated file name
+
+      # Optional: print what was saved (handy for quick verification)
+      - name: Show latest.json
+        run: test -f puzzles/latest.json && cat puzzles/latest.json || true
+
+      - name: Commit & push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: update connections (CMT) $(date -u +%F)" || echo "No changes"
+          git push
