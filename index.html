@@ -24,7 +24,7 @@
     body { margin:0; font-family:'Montserrat', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:var(--bg); color:var(--fg); }
 
     .wrap { max-width:900px; margin:0 auto; padding:16px; }
-    h1 { margin:8px 0 4px; fontsize: var(--heading-size); font-weight:700; letter-spacing:.2px; }
+    h1 { margin:8px 0 4px; font-size: var(--heading-size); font-weight:700; letter-spacing:.2px; }
     .sub { color:var(--muted); font-size:12px; margin:0 0 12px; }
 
     /* Toolbar */
@@ -137,12 +137,12 @@
     const MIN_SIZE  = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tile-font-min')) || 10;
     function fits(el){ return el.scrollWidth <= el.clientWidth && el.scrollHeight <= el.clientHeight; }
     function fitText(el){
-      el.style.fontSize = BASE_SIZE + 'px';
+      el.style.font-size = BASE_SIZE + 'px';
       if (fits(el)) return;
       let size = BASE_SIZE;
       while (size > MIN_SIZE) {
         size -= 1;
-        el.style.fontSize = size + 'px';
+        el.style.font-size = size + 'px';
         if (fits(el)) break;
       }
     }
@@ -374,6 +374,7 @@
   </script>
 </body>
 </html>
+
 
 
 
