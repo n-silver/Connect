@@ -58,10 +58,10 @@
     code { background:#eee; padding:1px 4px; border-radius:4px; }
 
     /* Pastel palette for solved groups */
-    .p-blue   { background:#e8f2ff; border-color:#cfe5ff; color:#0f253a; }
-    .p-yellow { background:#fff7cc; border-color:#ffe78a; color:#3a3200; }
-    .p-pink   { background:#ffe0ea; border-color:#ffc3d6; color:#3a0e20; }
-    .p-green  { background:#e6f7e6; border-color:#c9ebc9; color:#0f2a0f; }
+    .tile.solved.solved-group.p-blue   { background:#e8f2ff !important; border-color:#cfe5ff !important; color:#0f253a !important; }
+    .tile.solved.solved-group.p-yellow { background:#fff7cc !important; border-color:#ffe78a !important; color:#3a3200 !important; }
+    .tile.solved.solved-group.p-pink   { background:#ffe0ea !important; border-color:#ffc3d6 !important; color:#3a0e20 !important; }
+    .tile.solved.solved-group.p-green  { background:#e6f7e6 !important; border-color:#c9ebc9 !important; color:#0f2a0f !important; }
 
     /* Solved group container spanning full width */
     .solved-group { grid-column:1 / -1; padding:12px; border-radius:14px; text-align:center; display:flex; flex-direction:column; gap:4px; }
@@ -352,7 +352,7 @@
       loadPuzzle(currentDate).then(p => {
         const unsolved = p.categories.filter(c => !solvedGroups.some(g => g.title === c.title));
         unsolved.forEach(g => revealGroup(g));
-        msg.textContent = '👀 Revealed all answers.';
+        msg.textContent = 'Revealed all answers.';
       });
     }
 
