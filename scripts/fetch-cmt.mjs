@@ -42,6 +42,12 @@ async function readPrevLatest() {
   }
 }
 
+// Parse a WordPress "content.rendered" HTML string using your existing linear parser
+function parseFromRenderedHTML(html) {
+  const text = htmlToTextPreservingLines(html || '');
+  return parseFromLinearText(text);
+}
+
 async function acceptCookies(page) {
   const labels = [/^accept all$/i, /^accept$/i, /^agree$/i, /^ok$/i, /^i agree$/i];
   const deadline = Date.now() + 8000;
@@ -160,6 +166,41 @@ async function expandAccordions(page) {
     await sleep(150);
   }
 
+const ORIGIN = 'https://capitalizemytitle.com';
+
+// Try WordPress REST API first (usually bypasses page-level cache)
+async function fetchViaWordPressREST(context) {
+  const endpoints = [
+    // Exact page by slug
+    `${ORIGIN}/wp-json/wp/v2/pages?slug=todays-nyt-connections-answers&_fields=content.rendered,modified_gmt`,
+    // If they ever move it to a "post"
+    `${ORIGIN}/wp-json/wp/v2/posts?slug=todays-nyt-connections-answers&_fields=content.rendered,modified_gmt`,
+    // Fallback: search
+    `${ORIGIN}/wp-json/wp/v2/pages?search=nyt%20connections&_fields=content.rendered,modified_gmt&per_page=1`,
+    `${ORIGIN}/wp-json/wp/v2/posts?search=nyt%20connections&_fields=content.rendered,modified_gmt&per_page=1`,
+  ];
+
+  for (const base of endpoints) {
+    const url = `${base}&_=${Date.now()}`;
+    const res = await context.request.get(url, {
+      headers: { 'Cache-Control': 'no-store', 'Pragma': 'no-cache' }
+    }).catch(() => null);
+    if (!res || !res.ok()) continue;
+
+    let data;
+    try { data = await res.json(); } catch { continue; }
+    const arr = Array.isArray(data) ? data : [data];
+    for (const item of arr) {
+      const html = item?.content?.rendered;
+      if (!html) continue;
+      const parsed = parseFromRenderedHTML(html);
+      if (parsed) return parsed;
+    }
+  }
+  return null;
+}
+
+  
   // Click any generic “Answer” toggles too
   const expanders = page.locator(
     `xpath=(//h1|//h2|//h3|//h4)[contains(translate(normalize-space(.),"abcdefghijklmnopqrstuvwxyz","ABCDEFGHIJKLMNOPQRSTUVWXYZ"),"TODAY'S NYT CONNECTIONS PUZZLE ANSWER")][1]/following::*[
@@ -177,36 +218,61 @@ async function fetchTodayFromCMT() {
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({
     timezoneId: 'UTC',
-    locale: 'en-US',
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36'
+    locale: 'en-GB',
+    userAgent: `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36 Playwright/${Math.floor(Math.random()*1000)}`,
   });
   await context.setExtraHTTPHeaders({
-    'Cache-Control': 'no-cache',
-    'Pragma': 'no-cache'
+    'Cache-Control': 'no-cache, no-store',
+    'Pragma': 'no-cache',
   });
   const page = await context.newPage();
 
-  async function loadOnce() {
+  // 0) Try WordPress REST API (often freshest)
+  let result = await fetchViaWordPressREST(context);
+
+  // Helper to load/parse the HTML page with a cache-buster
+  const loadFromHTMLOnce = async () => {
     const bust = Date.now();
-    await page.goto(`${URL}?ts=${bust}`, { waitUntil: 'networkidle', timeout: 60000 });
+    const url = `${URL}?ts=${bust}`;
+    // Optional: log which URL we hit
+    // console.log('Fetching:', url);
+
+    await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
     await sleep(800);
     await acceptCookies(page).catch(()=>{});
     await slowScroll(page, 12, 200);
 
-    // 1) Parse from raw HTML (works even if accordions are collapsed)
+    // Try collapsed HTML first
     const html1 = await page.content();
-    const text1 = htmlToTextPreservingLines(html1);
-    let result = parseFromLinearText(text1);
+    let parsed = parseFromLinearText(htmlToTextPreservingLines(html1));
 
-    // 2) If not found, expand accordions and parse visible text
-    if (!result) {
+    // If not parsed, expand accordions and try visible text
+    if (!parsed) {
       await expandAccordions(page);
       await sleep(300);
       const text2 = await page.evaluate(() => document.body.innerText);
-      result = parseFromLinearText(text2);
+      parsed = parseFromLinearText(text2);
     }
-    return result;
+    return parsed;
+  };
+
+  // 1) If REST failed, or we suspect staleness, load HTML
+  const prev = await readPrevLatest();
+  if (!result) {
+    result = await loadFromHTMLOnce();
+    if (!result) { await browser.close(); throw new Error('Could not parse 4 colour sections with 4 words each.'); }
   }
+
+  // 2) Stale guard: if words match previous latest.json, reload HTML once more
+  if (prev && flattenWords(prev) === flattenWords(result)) {
+    await sleep(5000);
+    const second = await loadFromHTMLOnce();
+    if (second) result = second;
+  }
+
+  await browser.close();
+  return result;
+}
 
   // First attempt (bypasses cache with ?ts=…)
   let result = await loadOnce();
