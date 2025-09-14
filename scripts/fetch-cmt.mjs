@@ -15,8 +15,13 @@ const uniqBy = (arr, key) => { const seen = new Set(); const out=[]; for (const 
 
 const COLORS = ['Yellow','Green','Blue','Purple'];
 const cleanTitle = (s) => (s || '').replace(/[“”"’]+/g, '').replace(/\s+/g, ' ').trim();
-const cleanWord  = (s) => (s || '').replace(/[“”"’]+/g, '').replace(/[^A-Za-z'’-]/g,'').trim();
-const isWord     = (s) => /^[A-Za-z][A-Za-z'’-]*$/.test(s);
+const cleanWord  = (s) =>
+  (s || '')
+    .replace(/[“”"’]+/g, '')
+    .replace(/[^A-Za-z'’-]/g, '')
+    .toUpperCase()
+    .trim();
+const isWord     = (s) => /^[A-Z][A-Z'’-]*$/.test(s); // uppercase after cleanWord
 
 async function acceptCookies(page) {
   const labels = [/^accept all$/i, /^accept$/i, /^agree$/i, /^ok$/i, /^i agree$/i];
@@ -77,18 +82,18 @@ function parseFromLinearText(bigText) {
       if (colorAt < 0) continue;
     }
 
-    // Search forward (up to ~20 lines) for TITLE: (a line that ends with colon)
+    // Search forward (up to ~30 lines) for TITLE: (line ending with colon)
     let titleLineIndex = -1;
-    for (let j = colorAt; j < Math.min(colorAt + 20, lines.length); j++) {
+    for (let j = colorAt; j < Math.min(colorAt + 30, lines.length); j++) {
       const L = lines[j];
-      if (/:$/.test(L) && /[A-Za-z]/.test(L)) {
+      if (/:\s*$/.test(L) && /[A-Za-z]/.test(L)) {
         titleLineIndex = j;
         break;
       }
     }
     if (titleLineIndex < 0) continue;
 
-    const title = cleanTitle(lines[titleLineIndex].replace(/:$/, ''));
+    const title = cleanTitle(lines[titleLineIndex].replace(/:\s*$/, ''));
 
     // Next non-empty line should be the comma list
     let words = [];
@@ -97,7 +102,7 @@ function parseFromLinearText(bigText) {
       if (parts.length >= 4) { words = parts.slice(0,4); break; }
     }
     if (words.length !== 4) {
-      // Fallback: collect the next 6 lines that look like single words
+      // Fallback: collect the next lines that look like single words
       const buf = [];
       for (let k = titleLineIndex + 1; k < Math.min(titleLineIndex + 10, lines.length); k++) {
         const w = cleanWord(lines[k]);
@@ -192,7 +197,16 @@ async function updateFiles(puzzle) {
   const merged = uniqBy([{ date: puzzle.date, categories: puzzle.categories }, ...puzzles], p => p.date);
   const payload = JSON.stringify({ puzzles: merged }, null, 2);
   const replacement = `<script id="conn-data" type="application/json">\n${payload}\n</script>`;
-  const nextHtml = html.replace(/<script id="conn-data" type="application\/json">[\s\S]*?<\/script>/, replacement);
+
+  let nextHtml;
+  if (m) {
+    nextHtml = html.replace(/<script id="conn-data" type="application\/json">[\s\S]*?<\/script>/, replacement);
+  } else {
+    // If the block doesn't exist, insert it before </body> (or append if no </body>)
+    const bodyRe = /<\/body>/i;
+    nextHtml = bodyRe.test(html) ? html.replace(bodyRe, `${replacement}\n</body>`) : `${html}\n${replacement}\n`;
+  }
+
   await fs.writeFile(INDEX, nextHtml, 'utf8');
 }
 
