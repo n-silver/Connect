@@ -184,30 +184,29 @@ async function fetchTodayFromCMT() {
   return result;
 }
 
+// --- replace updateFiles(...) and main() in scripts/fetch-cmt.mjs ---
+
 async function updateFiles(puzzle) {
   await fs.mkdir(PUZZLES_DIR, { recursive: true });
-  await fs.writeFile(path.join(PUZZLES_DIR, `${puzzle.date}.json`), JSON.stringify(puzzle, null, 2));
-  await fs.writeFile(path.join(PUZZLES_DIR, `latest.json`), JSON.stringify(puzzle, null, 2));
 
-  // Update embedded archive in index.html
-  const html = await fs.readFile(INDEX, 'utf8');
-  const m = html.match(/<script id="conn-data" type="application\/json">\s*([\s\S]*?)\s*<\/script>/);
-  const current = m ? (safeJSON(m[1].trim()) || { puzzles: [] }) : { puzzles: [] };
-  const puzzles = Array.isArray(current.puzzles) ? current.puzzles : [];
-  const merged = uniqBy([{ date: puzzle.date, categories: puzzle.categories }, ...puzzles], p => p.date);
-  const payload = JSON.stringify({ puzzles: merged }, null, 2);
-  const replacement = `<script id="conn-data" type="application/json">\n${payload}\n</script>`;
+  // Write dated + latest
+  const datedPath = path.join(PUZZLES_DIR, `${puzzle.date}.json`);
+  const latestPath = path.join(PUZZLES_DIR, `latest.json`);
+  await fs.writeFile(datedPath, JSON.stringify(puzzle, null, 2));
+  await fs.writeFile(latestPath, JSON.stringify(puzzle, null, 2));
 
-  let nextHtml;
-  if (m) {
-    nextHtml = html.replace(/<script id="conn-data" type="application\/json">[\s\S]*?<\/script>/, replacement);
-  } else {
-    // If the block doesn't exist, insert it before </body> (or append if no </body>)
-    const bodyRe = /<\/body>/i;
-    nextHtml = bodyRe.test(html) ? html.replace(bodyRe, `${replacement}\n</body>`) : `${html}\n${replacement}\n`;
-  }
-
-  await fs.writeFile(INDEX, nextHtml, 'utf8');
+  // Update manifest.json (list of dates, newest first)
+  const manifestPath = path.join(PUZZLES_DIR, 'manifest.json');
+  let manifest = [];
+  try {
+    const raw = await fs.readFile(manifestPath, 'utf8');
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) manifest = parsed;
+  } catch {}
+  // de-dup + insert today at the top
+  manifest = [puzzle.date, ...manifest.filter(d => d !== puzzle.date)]
+    .sort((a, b) => (a < b ? 1 : -1)); // newest first
+  await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2));
 }
 
 async function main() {
@@ -221,7 +220,8 @@ async function main() {
   }
 
   await updateFiles(puzzle);
-  console.log(`[OK] Saved ${puzzle.date} (latest + archive) and updated index.html`);
+  console.log(`[OK] Saved ${puzzle.date} (latest + archive) and updated puzzles/manifest.json`);
 }
 
 main().catch(err => { console.error(err); process.exit(1); });
+
