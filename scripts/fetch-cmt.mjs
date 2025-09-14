@@ -23,6 +23,25 @@ const cleanWord  = (s) =>
     .trim();
 const isWord     = (s) => /^[A-Z][A-Z'’-]*$/.test(s); // uppercase after cleanWord
 
+// Compare full 16-word set, order-insensitive
+function flattenWords(puzzle) {
+  if (!puzzle?.categories) return '';
+  return puzzle.categories
+    .flatMap(c => c.words)
+    .map(w => String(w).toUpperCase())
+    .sort()
+    .join('|');
+}
+
+async function readPrevLatest() {
+  try {
+    const raw = await fs.readFile(path.join(PUZZLES_DIR, 'latest.json'), 'utf8');
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
 async function acceptCookies(page) {
   const labels = [/^accept all$/i, /^accept$/i, /^agree$/i, /^ok$/i, /^i agree$/i];
   const deadline = Date.now() + 8000;
@@ -156,33 +175,59 @@ async function expandAccordions(page) {
 
 async function fetchTodayFromCMT() {
   const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage({
-    viewport: { width: 1280, height: 900 },
+  const context = await browser.newContext({
+    timezoneId: 'UTC',
+    locale: 'en-US',
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36'
   });
+  await context.setExtraHTTPHeaders({
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache'
+  });
+  const page = await context.newPage();
 
-  await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await sleep(800);
-  await acceptCookies(page).catch(()=>{});
-  await slowScroll(page, 12, 200);
+  async function loadOnce() {
+    const bust = Date.now();
+    await page.goto(`${URL}?ts=${bust}`, { waitUntil: 'networkidle', timeout: 60000 });
+    await sleep(800);
+    await acceptCookies(page).catch(()=>{});
+    await slowScroll(page, 12, 200);
 
-  // 1) Try parsing from raw HTML text (works even if collapsed)
-  const html1 = await page.content();
-  const text1 = htmlToTextPreservingLines(html1);
-  let result = parseFromLinearText(text1);
+    // 1) Parse from raw HTML (works even if accordions are collapsed)
+    const html1 = await page.content();
+    const text1 = htmlToTextPreservingLines(html1);
+    let result = parseFromLinearText(text1);
 
-  // 2) If that fails, expand accordions and parse from visible text
+    // 2) If not found, expand accordions and parse visible text
+    if (!result) {
+      await expandAccordions(page);
+      await sleep(300);
+      const text2 = await page.evaluate(() => document.body.innerText);
+      result = parseFromLinearText(text2);
+    }
+    return result;
+  }
+
+  // First attempt (bypasses cache with ?ts=…)
+  let result = await loadOnce();
   if (!result) {
-    await expandAccordions(page);
-    await sleep(300);
-    const text2 = await page.evaluate(() => document.body.innerText);
-    result = parseFromLinearText(text2);
+    await browser.close();
+    throw new Error('Could not parse 4 colour sections with 4 words each.');
+  }
+
+  // Stale-guard: if the words match the last saved latest.json, force one more fresh load
+  const prev = await readPrevLatest();
+  if (prev && flattenWords(prev) === flattenWords(result)) {
+    // Likely hit a stale edge. Wait a moment and try again with a new cache-buster.
+    await sleep(5000);
+    const second = await loadOnce();
+    if (second) result = second;
   }
 
   await browser.close();
-  if (!result) throw new Error('Could not parse 4 colour sections with 4 words each.');
   return result;
 }
+
 
 // --- replace updateFiles(...) and main() in scripts/fetch-cmt.mjs ---
 
