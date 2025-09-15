@@ -3,17 +3,16 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { chromium } from 'playwright';
 
-const URL = 'https://capitalizemytitle.com/todays-nyt-connections-answers/';
+const ORIGIN = 'https://capitalizemytitle.com';
+const URL = `${ORIGIN}/todays-nyt-connections-answers/`;
 const ROOT = process.cwd();
-const INDEX = path.join(ROOT, 'index.html');
 const PUZZLES_DIR = path.join(ROOT, 'puzzles');
 const todayUTC = new Date().toISOString().slice(0, 10);
 
-const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-const safeJSON = (s) => { try { return JSON.parse(s); } catch { return null; } };
-const uniqBy = (arr, key) => { const seen = new Set(); const out=[]; for (const x of arr){ const k=key(x); if(!seen.has(k)){ seen.add(k); out.push(x);} } return out; };
-
 const COLORS = ['Yellow','Green','Blue','Purple'];
+
+// ---------- small helpers ----------
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const cleanTitle = (s) => (s || '').replace(/[“”"’]+/g, '').replace(/\s+/g, ' ').trim();
 const cleanWord  = (s) =>
   (s || '')
@@ -21,7 +20,7 @@ const cleanWord  = (s) =>
     .replace(/[^A-Za-z'’-]/g, '')
     .toUpperCase()
     .trim();
-const isWord     = (s) => /^[A-Z][A-Z'’-]*$/.test(s); // uppercase after cleanWord
+const isWord     = (s) => /^[A-Z][A-Z'’-]*$/.test(s);
 
 // Compare full 16-word set, order-insensitive
 function flattenWords(puzzle) {
@@ -42,18 +41,13 @@ async function readPrevLatest() {
   }
 }
 
-// Parse a WordPress "content.rendered" HTML string using your existing linear parser
-function parseFromRenderedHTML(html) {
-  const text = htmlToTextPreservingLines(html || '');
-  return parseFromLinearText(text);
-}
-
+// ---------- page helpers ----------
 async function acceptCookies(page) {
   const labels = [/^accept all$/i, /^accept$/i, /^agree$/i, /^ok$/i, /^i agree$/i];
   const deadline = Date.now() + 8000;
   while (Date.now() < deadline) {
     for (const fr of page.frames()) {
-      const btns = await fr.$$('button, [role="button"]');
+      const btns = await fr.$$('button, [role="button"]').catch(() => []);
       for (const b of btns) {
         const t = ((await b.innerText().catch(()=>'')) || '').trim();
         if (labels.some(re => re.test(t))) { await b.click({ force: true }).catch(()=>{}); return; }
@@ -70,12 +64,13 @@ async function slowScroll(page, steps = 10, pause = 250) {
   }
 }
 
+// ---------- parsing ----------
 function htmlToTextPreservingLines(html) {
-  // Turn block endings into newlines, remove tags, decode a few common entities.
+  // Convert block ends to newlines, strip tags, decode a few entities.
   let t = html;
   t = t.replace(/<br\s*\/?>/gi, '\n');
   t = t.replace(/<\/(p|div|li|h[1-6]|section|article)>/gi, '\n');
-  t = t.replace(/<[^>]+>/g, ''); // strip tags
+  t = t.replace(/<[^>]+>/g, '');
   t = t.replace(/&nbsp;/g, ' ');
   t = t.replace(/&amp;/g, '&');
   t = t.replace(/&ldquo;|&rdquo;|&quot;/g, '"');
@@ -151,6 +146,11 @@ function parseFromLinearText(bigText) {
   return { date: todayUTC, categories: ordered.map(g => ({ title: g.title, words: g.words })) };
 }
 
+function parseFromRenderedHTML(html) {
+  const text = htmlToTextPreservingLines(html || '');
+  return parseFromLinearText(text);
+}
+
 async function expandAccordions(page) {
   // Scroll to the heading and click colour toggles (if any)
   const head = page.getByRole('heading', { name: /today'?s nyt connections puzzle answer/i }).first();
@@ -166,16 +166,27 @@ async function expandAccordions(page) {
     await sleep(150);
   }
 
-const ORIGIN = 'https://capitalizemytitle.com';
+  // Click any generic “Answer” toggles too
+  const expanders = page.locator(
+    `xpath=(//h1|//h2|//h3|//h4)[contains(translate(normalize-space(.),"abcdefghijklmnopqrstuvwxyz","ABCDEFGHIJKLMNOPQRSTUVWXYZ"),"TODAY'S NYT CONNECTIONS PUZZLE ANSWER")][1]/following::*[
+      self::button or @role="button" or self::summary
+    ][contains(translate(normalize-space(.),"abcdefghijklmnopqrstuvwxyz","ABCDEFGHIJKLMNOPQRSTUVWXYZ"), "ANSWER")]`
+  );
+  const n = await expanders.count().catch(()=>0);
+  for (let i = 0; i < n; i++) {
+    await expanders.nth(i).click({ timeout: 1000 }).catch(()=>{});
+    await sleep(100);
+  }
+}
 
-// Try WordPress REST API first (usually bypasses page-level cache)
+// ---------- WordPress REST (often fresher than page HTML) ----------
 async function fetchViaWordPressREST(context) {
   const endpoints = [
     // Exact page by slug
     `${ORIGIN}/wp-json/wp/v2/pages?slug=todays-nyt-connections-answers&_fields=content.rendered,modified_gmt`,
     // If they ever move it to a "post"
     `${ORIGIN}/wp-json/wp/v2/posts?slug=todays-nyt-connections-answers&_fields=content.rendered,modified_gmt`,
-    // Fallback: search
+    // Fallback: search (page + post)
     `${ORIGIN}/wp-json/wp/v2/pages?search=nyt%20connections&_fields=content.rendered,modified_gmt&per_page=1`,
     `${ORIGIN}/wp-json/wp/v2/posts?search=nyt%20connections&_fields=content.rendered,modified_gmt&per_page=1`,
   ];
@@ -200,26 +211,13 @@ async function fetchViaWordPressREST(context) {
   return null;
 }
 
-  
-  // Click any generic “Answer” toggles too
-  const expanders = page.locator(
-    `xpath=(//h1|//h2|//h3|//h4)[contains(translate(normalize-space(.),"abcdefghijklmnopqrstuvwxyz","ABCDEFGHIJKLMNOPQRSTUVWXYZ"),"TODAY'S NYT CONNECTIONS PUZZLE ANSWER")][1]/following::*[
-      self::button or @role="button" or self::summary
-    ][contains(translate(normalize-space(.),"abcdefghijklmnopqrstuvwxyz","ABCDEFGHIJKLMNOPQRSTUVWXYZ"), "ANSWER")]`
-  );
-  const n = await expanders.count().catch(()=>0);
-  for (let i = 0; i < n; i++) {
-    await expanders.nth(i).click({ timeout: 1000 }).catch(()=>{});
-    await sleep(100);
-  }
-}
-
+// ---------- main fetch with cache-busting + stale guard ----------
 async function fetchTodayFromCMT() {
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({
     timezoneId: 'UTC',
     locale: 'en-GB',
-    userAgent: `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36 Playwright/${Math.floor(Math.random()*1000)}`,
+    userAgent: `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36 Playwright/${Math.floor(Math.random()*1000)}`
   });
   await context.setExtraHTTPHeaders({
     'Cache-Control': 'no-cache, no-store',
@@ -227,16 +225,13 @@ async function fetchTodayFromCMT() {
   });
   const page = await context.newPage();
 
-  // 0) Try WordPress REST API (often freshest)
+  // 0) Try WordPress REST API (fresher)
   let result = await fetchViaWordPressREST(context);
 
   // Helper to load/parse the HTML page with a cache-buster
   const loadFromHTMLOnce = async () => {
     const bust = Date.now();
     const url = `${URL}?ts=${bust}`;
-    // Optional: log which URL we hit
-    // console.log('Fetching:', url);
-
     await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
     await sleep(800);
     await acceptCookies(page).catch(()=>{});
@@ -274,29 +269,7 @@ async function fetchTodayFromCMT() {
   return result;
 }
 
-  // First attempt (bypasses cache with ?ts=…)
-  let result = await loadOnce();
-  if (!result) {
-    await browser.close();
-    throw new Error('Could not parse 4 colour sections with 4 words each.');
-  }
-
-  // Stale-guard: if the words match the last saved latest.json, force one more fresh load
-  const prev = await readPrevLatest();
-  if (prev && flattenWords(prev) === flattenWords(result)) {
-    // Likely hit a stale edge. Wait a moment and try again with a new cache-buster.
-    await sleep(5000);
-    const second = await loadOnce();
-    if (second) result = second;
-  }
-
-  await browser.close();
-  return result;
-}
-
-
-// --- replace updateFiles(...) and main() in scripts/fetch-cmt.mjs ---
-
+// ---------- write files (files-only model) ----------
 async function updateFiles(puzzle) {
   await fs.mkdir(PUZZLES_DIR, { recursive: true });
 
@@ -314,12 +287,12 @@ async function updateFiles(puzzle) {
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) manifest = parsed;
   } catch {}
-  // de-dup + insert today at the top
   manifest = [puzzle.date, ...manifest.filter(d => d !== puzzle.date)]
-    .sort((a, b) => (a < b ? 1 : -1)); // newest first
+    .sort((a, b) => (a < b ? 1 : -1));
   await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2));
 }
 
+// ---------- CLI ----------
 async function main() {
   const DRY = process.argv.includes('--dry-run');
   const puzzle = await fetchTodayFromCMT();
@@ -335,4 +308,3 @@ async function main() {
 }
 
 main().catch(err => { console.error(err); process.exit(1); });
-
