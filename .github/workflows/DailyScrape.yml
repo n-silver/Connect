@@ -1,30 +1,25 @@
-name: Daily Connections (CMT)
+name: Daily Connections (HTML source)
 
 on:
   schedule:
-    - cron: '2 23 * * *'
+    - cron: '3 23 * * *'   # tiny buffer after site updates
   workflow_dispatch: {}
 
 permissions:
   contents: write
 
 concurrency:
-  group: daily-cmt
+  group: daily-html
   cancel-in-progress: true
 
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Install Playwright
-        run: npm i --no-save playwright@latest
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
       - name: Fetch + update files
         run: node scripts/fetch-cmt.mjs
       - name: Show latest.json
@@ -34,5 +29,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "chore: update connections files $(date -u +%F)" || echo "No changes"
+          git commit -m "chore: update connections (html) $(date -u +%F)" || echo "No changes"
           git push
