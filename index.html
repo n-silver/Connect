@@ -128,7 +128,6 @@
     <div class="check-wrap">
   <button id="btn-check" class="check-btn" title="Check selected tiles" aria-disabled="true">Check</button>
 </div>
-    <div id="msg" class="status" aria-live="polite"></div>
 
     <div class="footer">
     </div>
@@ -198,7 +197,6 @@
           if (latest?.date) { manifest = [latest.date]; puzzleCache.set(latest.date, latest); }
         } catch (e) {
           console.error('Failed to load any puzzle data', e);
-          msg.textContent = 'Could not load puzzle data. Please try again later.';
           manifest = [];
         }
       }
@@ -316,7 +314,6 @@
       selected = [];
       solvedGroups = [];
       updateCheckUI();
-      msg.textContent = '';
 
       const p = await loadPuzzle(currentDate);
       buildInitialLayout(p);
@@ -354,9 +351,7 @@ updateCheckUI();
 
         if (match && !solvedGroups.some(g => g.title === match.title)) {
           revealGroup(match);
-          msg.textContent = `✓ ${match.title}`;
         } else {
-          msg.textContent = '✗ Not a group';
           clearSelectionClasses();
           selected = [];
           updateCheckUI();
@@ -372,7 +367,6 @@ updateCheckUI();
       selected = [];
       updateCheckUI();
       renderGrid();
-      if (solvedGroups.length === 4) msg.textContent = '🎉 Completed!';
     }
 
     function helpSolveOne(randomize=true) {
@@ -381,7 +375,6 @@ updateCheckUI();
         if (!unsolved.length) return;
         const group = randomize ? unsolved[Math.floor(Math.random()*unsolved.length)] : unsolved[0];
         revealGroup(group);
-        msg.textContent = `🪄 Helped: ${group.title}`;
       });
     }
 
@@ -389,7 +382,6 @@ updateCheckUI();
       loadPuzzle(currentDate).then(p => {
         const unsolved = p.categories.filter(c => !solvedGroups.some(g => g.title === c.title));
         unsolved.forEach(g => revealGroup(g));
-        msg.textContent = 'Revealed all answers.';
       });
     }
 
@@ -412,6 +404,7 @@ updateCheckUI();
   </script>
 </body>
 </html>
+
 
 
 
