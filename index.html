@@ -70,6 +70,35 @@
   opacity: .75;
 }
 
+.actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* Optional: keep buttons consistent; you likely already have base styles for button */
+.actions .help-btn,
+.actions .check-btn {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--fg);
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* You already have the “ready” style for Check; keep it */
+.check-btn.ready {
+  background: #111;
+  border-color: #111;
+  color: #fff;
+}
+
+
     
     .grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; max-width:680px; margin:0 auto; }
     .tile {
@@ -166,14 +195,17 @@
     <div class="toolbar">
       <label for="puzzle-select" class="sr-only">Choose puzzle</label>
       <select id="puzzle-select" aria-label="Choose puzzle"></select>
-      <button id="btn-help" title="Reveal one random group">Help</button>
     </div>
 
     <div id="solved" class="solved-list" aria-live="polite"></div>
     <div id="grid" class="grid" role="grid" aria-label="Connections grid of 16 tiles"></div>
-    <div class="check-wrap">
+    
+   <!-- Bottom actions: Help (left) + Check (right) -->
+<div class="actions">
+  <button id="btn-help" class="help-btn" title="Reveal two tiles">Help</button>
   <button id="btn-check" class="check-btn" title="Check selected tiles" aria-disabled="true">Check</button>
 </div>
+
 
     <div class="footer">
     </div>
@@ -499,6 +531,7 @@ function handleHelp() {
   </script>
 </body>
 </html>
+
 
 
 
