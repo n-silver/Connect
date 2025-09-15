@@ -96,65 +96,54 @@
     .tile.solved.solved-group.p-pink   { background:#ffe0ea !important; border-color:#ffc3d6 !important; color:#3a0e20 !important; }
     .tile.solved.solved-group.p-green  { background:#e6f7e6 !important; border-color:#c9ebc9 !important; color:#0f2a0f !important; }
 
-/* Thickness of the animated pastel ring */
-:root { --hint-ring: 2px; } /* try 1–3px */
+/* Thickness of the animated hint ring (1–3px looks best) */
+:root { --hint-ring: 2px; }
 
-/* Keep the normal tile look */
+/* Perfectly flush, animated pastel ring using layered backgrounds */
 .tile.hint {
+  /* keep normal look */
   position: relative;
-  background: #fff;
-  border: 1px solid transparent;            /* let the gradient be the visible border */
-  border-radius: 14px;                       /* match your .tile radius */
+  border-radius: 14px;                 /* match your .tile radius exactly */
   box-shadow: 0 1px 2px rgba(0,0,0,.05);
-  z-index: 0;
+
+  /* ring = border; make the real border transparent so the gradient shows there */
+  border: var(--hint-ring) solid transparent;
+
+  /* two layers: inner fill (padding-box) + animated pastel ring (border-box) */
+  --hint-fill: #fff; /* will switch on hover/selected below */
+  background:
+    linear-gradient(var(--hint-fill), var(--hint-fill)) padding-box,
+    linear-gradient(
+      90deg,
+      #FAE16F 0%,    /* yellow  */
+      #B9D188 25%,   /* green   */
+      #B0C2ED 50%,   /* blue    */
+      #CFABD7 75%,   /* pink    */
+      #FAE16F 100%   /* wrap for seamless loop */
+    ) border-box;
+
+  /* animate only the 2nd layer’s position */
+  background-size: 100% 100%, 300% 100%;
+  background-position: 0 0, 0% 50%;
+  animation: hintPastelFlow 6s linear infinite;
+  will-change: background-position;
 }
 
-/* Pastel flow: smooth gradient slides across the ring (no gaps) */
-.tile.hint::before {
-  content: "";
-  position: absolute;
-  inset: 0;                                  /* hugs the tile exactly */
-  border-radius: inherit;
-  padding: var(--hint-ring);                 /* ring thickness */
-
-  /* Smooth linear gradient across all four pastels */
-  background: linear-gradient(90deg,
-    #FAE16F 0%,   /* yellow */
-    #B9D188 25%,  /* green  */
-    #B0C2ED 50%,  /* blue   */
-    #CFABD7 75%,  /* pink   */
-    #FAE16F 100%  /* wrap for seamless loop */
-  );
-  background-size: 300% 100%;
-  background-position: 0% 50%;
-
-  /* Show only the border ring (mask out the center) */
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-          mask-composite: exclude;
-
-  pointer-events: none;
-  animation: hintPastelFlow 6s linear infinite; /* adjust speed here */
-  will-change: background-position;             /* smooth on low-end */
-}
-
-/* The gradient flows left→right; tweak duration for speed */
 @keyframes hintPastelFlow {
-  0%   { background-position:   0% 50%; }
-  100% { background-position: 300% 50%; }
+  0%   { background-position: 0 0,   0% 50%; }
+  100% { background-position: 0 0, 300% 50%; }
 }
 
-/* Preserve normal hover/selected fills */
-.tile.hint:hover     { background: #f3f4f6; } /* same as .tile:hover */
-.tile.hint.sel       { background: #efefef; } /* same as .tile.sel  */
-.tile.hint.sel:hover { background: #efefef; }
+/* Preserve your normal hover/selected fills */
+.tile.hint:hover     { --hint-fill: #f3f4f6; }  /* same as .tile:hover */
+.tile.hint.sel       { --hint-fill: #efefef; }  /* same as .tile.sel  */
+.tile.hint.sel:hover { --hint-fill: #efefef; }
 
-/* Reduced motion */
+/* Reduce/disable motion for users who prefer it */
 @media (prefers-reduced-motion: reduce) {
-  .tile.hint::before { animation: none; }
+  .tile.hint { animation: none; }
 }
+
 
 
 
@@ -526,6 +515,7 @@ function handleHelp() {
   </script>
 </body>
 </html>
+
 
 
 
