@@ -87,56 +87,46 @@
 
 
     
-    /* Thickness of the animated ring (1–3px usually looks best) */
-:root { --sel-ring: 2px; }
+/* Animated pastel flow ring for ANY selected tile */
+:root { --sel-ring: 1px; } /* ring thickness; 1px matches your normal border */
 
-/* Ensure tiles can host the pseudo-ring */
-.tile { position: relative; }
+.tile { --sel-fill:#fff; } /* inner fill default (white) */
 
-/* Animated pastel ring for every selected tile (hinted or not) */
-.tile.sel::before {
-  content: "";
-  position: absolute;
-  top: calc(-1 * var(--sel-ring));
-  left: calc(-1 * var(--sel-ring));
-  right: calc(-1 * var(--sel-ring));
-  bottom: calc(-1 * var(--sel-ring));
-  border-radius: inherit;
-
-  /* The flowing gradient (your pastel palette) */
-  padding: var(--sel-ring);
-  background: linear-gradient(
-    90deg,
-    #FFE78A 0%,   /* yellow (p-yellow border) */
-    #C9EBC9 25%,  /* green  (p-green  border) */
-    #CFE5FF 50%,  /* blue   (p-blue   border) */
-    #FFC3D6 75%,  /* pink   (p-pink   border) */
-    #FFE78A 100%  /* wrap for seamless loop */
-  );
-  background-size: 300% 100%;
-  background-position: 0% 50%;
-
-  /* Show only the ring (cut out the center) */
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-          mask-composite: exclude;
-
-  pointer-events: none;
-  will-change: background-position;
+.tile.sel {
+  /* Make the gradient live in the border so it fits perfectly (no gaps/clipping) */
+  border: var(--sel-ring) solid transparent;
+  border-radius: 14px; /* match your .tile radius exactly */
+  background:
+    /* inner layer: the tile fill (changes on hover) */
+    linear-gradient(var(--sel-fill), var(--sel-fill)) padding-box,
+    /* outer layer: animated pastel flow ring */
+    linear-gradient(90deg,
+      #FFE78A 0%,
+      #C9EBC9 25%,
+      #CFE5FF 50%,
+      #FFC3D6 75%,
+      #FFE78A 100%
+    ) border-box;
+  background-size: 100% 100%, 300% 100%;
+  background-position: 0 0, 0% 50%;
   animation: selPastelFlow 6s linear infinite;
+  will-change: background-position;
+  box-shadow: 0 1px 2px rgba(0,0,0,.05); /* keep the subtle shadow */
 }
+
+/* Hover tint for selected tiles: just change the inner fill var */
+.tile.sel:hover { --sel-fill:#f3f4f6; }
 
 @keyframes selPastelFlow {
-  0%   { background-position:   0% 50%; }
-  100% { background-position: 300% 50%; }
+  0%   { background-position: 0 0,   0% 50%; }
+  100% { background-position: 0 0, 300% 50%; }
 }
 
-/* Accessibility: respect reduced motion */
+/* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
-  .tile.sel::before { animation: none; }
+  .tile.sel { animation: none; }
 }
+
 
 
     .status { margin:14px 0; font-size:14px; color:var(--muted); min-height:1.5em; text-align:center; }
@@ -515,6 +505,7 @@ function handleHelp() {
   </script>
 </body>
 </html>
+
 
 
 
