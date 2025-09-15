@@ -40,6 +40,38 @@
     .sr-only { position:absolute!important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 
     /* Grid & tiles */
+
+.check-wrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.check-btn {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--fg);
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease, border-color .15s ease, opacity .15s ease;
+}
+
+/* turns black with white text when 4 tiles selected */
+.check-btn.ready {
+  background: #111;
+  border-color: #111;
+  color: #fff;
+}
+
+/* optional: hint that it’s inert until 4 picked */
+.check-btn[aria-disabled="true"]:not(.ready) {
+  opacity: .75;
+}
+
+    
     .grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; max-width:680px; margin:0 auto; }
     .tile {
       height:var(--tile-h); border:1px solid var(--border); border-radius:14px; background:var(--card);
@@ -87,7 +119,6 @@
       <label for="puzzle-select" class="sr-only">Choose puzzle</label>
       <select id="puzzle-select" aria-label="Choose puzzle"></select>
       <button id="btn-reset" title="Reset current puzzle">Reset</button>
-      <button id="btn-check" title="Check selected tiles">Check (<span id="sel-count">0</span>/4)</button>
       <button id="btn-help" title="Reveal one random group">Help</button>
       <button id="btn-giveup" title="Reveal all groups">Give Up</button>
       <span id="meta" class="sub" aria-live="polite"></span>
@@ -95,6 +126,9 @@
 
     <div id="solved" class="solved-list" aria-live="polite"></div>
     <div id="grid" class="grid" role="grid" aria-label="Connections grid of 16 tiles"></div>
+    <div class="check-wrap">
+  <button id="btn-check" class="check-btn" title="Check selected tiles" aria-disabled="true">Check</button>
+</div>
     <div id="msg" class="status" aria-live="polite"></div>
 
     <div class="footer">
@@ -128,7 +162,6 @@
     const btnCheck = $('#btn-check');
     const btnHelp = $('#btn-help');
     const btnGiveUp = $('#btn-giveup');
-    const selCount = $('#sel-count');
     const msg = $('#msg');
     const meta = $('#meta');
 
@@ -226,6 +259,13 @@
       return '';
     }
 
+    function updateCheckUI() {
+  const ready = selected.length === 4;
+  btnCheck.classList.toggle('ready', ready);
+  btnCheck.setAttribute('aria-disabled', ready ? 'false' : 'true');
+}
+
+
     // ===== Render =====
     function renderGrid() {
       grid.innerHTML = '';
@@ -277,7 +317,7 @@
     async function startPuzzle() {
       selected = [];
       solvedGroups = [];
-      selCount.textContent = '0';
+      updateCheckUI();
       msg.textContent = '';
 
       const p = await loadPuzzle(currentDate);
@@ -302,7 +342,7 @@
           el.classList.add('sel');
         }
       }
-      selCount.textContent = String(selected.length);
+updateCheckUI();
     }
 
     function clearSelectionClasses() {
@@ -322,7 +362,8 @@
           msg.textContent = '✗ Not a group';
           clearSelectionClasses();
           selected = [];
-          selCount.textContent = '0';
+          updateCheckUI();
+
         }
       });
     }
@@ -332,7 +373,7 @@
       const gset = new Set(group.words);
       layout = layout.filter(w => !gset.has(w));
       selected = [];
-      selCount.textContent = '0';
+      updateCheckUI();
       renderGrid();
       if (solvedGroups.length === 4) msg.textContent = '🎉 Completed!';
     }
@@ -374,6 +415,7 @@
   </script>
 </body>
 </html>
+
 
 
 
