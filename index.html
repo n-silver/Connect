@@ -96,39 +96,32 @@
     .tile.solved.solved-group.p-pink   { background:#ffe0ea !important; border-color:#ffc3d6 !important; color:#3a0e20 !important; }
     .tile.solved.solved-group.p-green  { background:#e6f7e6 !important; border-color:#c9ebc9 !important; color:#0f2a0f !important; }
 
-/* Hinted tiles: keep the standard tile look (light border + shadow) */
+/* Hinted tiles: keep standard look, add a smooth pastel pulse with box-shadow */
 .tile.hint {
-  position: relative;
-  background: #fff;                          /* same as normal */
-  border: 1px solid var(--border) !important;/* light grey, matches tiles */
-  box-shadow: 0 1px 2px rgba(0,0,0,.05);     /* same subtle shadow */
+  background: #fff;                          /* same as normal tiles */
+  border: 1px solid var(--border) !important;
+  box-shadow:
+    0 1px 2px rgba(0,0,0,.05),               /* the usual subtle shadow */
+    0 0 0 0 var(--pulse-color, transparent); /* animated halo layer */
+  animation: hintPulse 1.8s cubic-bezier(.22,.61,.36,1) infinite;
+  will-change: box-shadow;                   /* smoother animation */
 }
 
-/* Pastel color for the pulse (no fill change) */
-.tile.hint.p-blue   { --pulse-color: rgba(176,194,237,.65); }
-.tile.hint.p-yellow { --pulse-color: rgba(250,225,111,.60); }
-.tile.hint.p-pink   { --pulse-color: rgba(207,171,215,.60); }
-.tile.hint.p-green  { --pulse-color: rgba(185,209,136,.60); }
+/* Pastel for each hint color */
+.tile.hint.p-blue   { --pulse-color: rgba(176,194,237,.60); }
+.tile.hint.p-yellow { --pulse-color: rgba(250,225,111,.55); }
+.tile.hint.p-pink   { --pulse-color: rgba(207,171,215,.55); }
+.tile.hint.p-green  { --pulse-color: rgba(185,209,136,.55); }
 
-/* Pulse ring drawn with a pseudo-element so the real border/shadow stay intact */
-.tile.hint::after {
-  content: "";
-  position: absolute;
-  inset: -4px;                    /* slightly outside the tile */
-  border-radius: inherit;
-  pointer-events: none;
-  border: 2px solid var(--pulse-color, transparent);
-  opacity: .85;
-  transform: scale(0.96);
-  animation: hintPulse 1.6s ease-out infinite;
-}
-
-/* Pulse animation */
 @keyframes hintPulse {
-  0%   { opacity: .85; transform: scale(0.96); }
-  70%  { opacity: 0;   transform: scale(1.10); }
-  100% { opacity: 0;   transform: scale(1.10); }
+  0%   { box-shadow: 0 1px 2px rgba(0,0,0,.05), 0 0 0 0 var(--pulse-color); }
+  70%  { box-shadow: 0 1px 2px rgba(0,0,0,.05), 0 0 0 7px rgba(0,0,0,0); }
+  100% { box-shadow: 0 1px 2px rgba(0,0,0,.05), 0 0 0 0 rgba(0,0,0,0); }
 }
+
+
+
+
     
     /* Solved group container spanning full width */
     .solved-group { grid-column:1 / -1; padding:12px; border-radius:14px; text-align:center; display:flex; flex-direction:column; gap:4px; }
@@ -493,6 +486,7 @@ function handleHelp() {
   </script>
 </body>
 </html>
+
 
 
 
