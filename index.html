@@ -118,7 +118,6 @@
     <div class="toolbar">
       <label for="puzzle-select" class="sr-only">Choose puzzle</label>
       <select id="puzzle-select" aria-label="Choose puzzle"></select>
-      <button id="btn-reset" title="Reset current puzzle">Reset</button>
       <button id="btn-help" title="Reveal one random group">Help</button>
       <button id="btn-giveup" title="Reveal all groups">Give Up</button>
     </div>
@@ -156,7 +155,6 @@
     const sel = $('#puzzle-select');
     const grid = $('#grid');
     const solvedList = $('#solved');
-    const btnReset = $('#btn-reset');
     const btnCheck = $('#btn-check');
     const btnHelp = $('#btn-help');
     const btnGiveUp = $('#btn-giveup');
@@ -387,7 +385,6 @@ updateCheckUI();
 
     // Wire up controls
     btnCheck.addEventListener('click', checkSelection);
-    btnReset.addEventListener('click', startPuzzle);
     btnHelp.addEventListener('click', () => helpSolveOne(true));
     btnGiveUp.addEventListener('click', giveUpRevealAll);
 
@@ -404,6 +401,7 @@ updateCheckUI();
   </script>
 </body>
 </html>
+
 
 
 
