@@ -96,6 +96,12 @@
     .tile.solved.solved-group.p-pink   { background:#ffe0ea !important; border-color:#ffc3d6 !important; color:#3a0e20 !important; }
     .tile.solved.solved-group.p-green  { background:#e6f7e6 !important; border-color:#c9ebc9 !important; color:#0f2a0f !important; }
 
+    /* Hint styling for two-step Help */
+    .tile.hint.p-blue   { background:#e8f2ff; border-color:#cfe5ff; color:#0f253a; }
+    .tile.hint.p-yellow { background:#fff7cc; border-color:#ffe78a; color:#3a3200; }
+    .tile.hint.p-pink   { background:#ffe0ea; border-color:#ffc3d6; color:#3a0e20; }
+    .tile.hint.p-green  { background:#e6f7e6; border-color:#c9ebc9; color:#0f2a0f; }
+    
     /* Solved group container spanning full width */
     .solved-group { grid-column:1 / -1; padding:12px; border-radius:14px; text-align:center; display:flex; flex-direction:column; gap:4px; }
     .solved-title { font-weight:700; font-size:14px; letter-spacing:.2px; margin:0; text-align:center; }
@@ -150,6 +156,9 @@
     let selected = [];
     let solvedGroups = [];
     let layout = [];
+    // Two-step Help state: when set, we have a staged group with 2 hinted tiles
+    let stagedHelp = null; // { group, hinted: Set<string>, color: string }
+
 
     // Elements
     const sel = $('#puzzle-select');
@@ -289,8 +298,11 @@
         btn.type = 'button';
         btn.className = 'tile';
         btn.textContent = w;
+        // HINT: color the hinted tiles
+        if (stagedHelp && stagedHelp.hinted && stagedHelp.hinted.has(w)) {
+          btn.classList.add('hint', stagedHelp.color);
+          }
         btn.addEventListener('click', () => toggleWord(btn, w));
-
         grid.appendChild(btn);
         ro.observe(btn);
       }
@@ -311,6 +323,7 @@
     async function startPuzzle() {
       selected = [];
       solvedGroups = [];
+      stagedHelp = null;
       updateCheckUI();
 
       const p = await loadPuzzle(currentDate);
@@ -359,6 +372,9 @@ updateCheckUI();
     }
 
     function revealGroup(group) {
+        if (stagedHelp && stagedHelp.group && stagedHelp.group.title === group.title) {
+    stagedHelp = null;
+  }
       solvedGroups.push(group);
       const gset = new Set(group.words);
       layout = layout.filter(w => !gset.has(w));
@@ -385,7 +401,49 @@ updateCheckUI();
 
     // Wire up controls
     btnCheck.addEventListener('click', checkSelection);
-    btnHelp.addEventListener('click', () => helpSolveOne(true));
+btnHelp.addEventListener('click', handleHelp);
+
+function handleHelp() {
+  // Load the current puzzle (for the /puzzles loader)
+  loadPuzzle(currentDate).then(p => {
+    // If we already staged a hint, finish that group on second press
+    if (stagedHelp && stagedHelp.group) {
+      // Reveal/solve that whole group now
+      revealGroup(stagedHelp.group);
+      return;
+    }
+
+    // Otherwise, stage a new random unsolved group and hint 2 tiles
+    const unsolved = p.categories.filter(c => !solvedGroups.some(g => g.title === c.title));
+    if (!unsolved.length) return;
+
+    // Pick a random group
+    const group = unsolved[Math.floor(Math.random() * unsolved.length)];
+
+    // Pick 2 of its words at random
+    const words = [...group.words];
+    for (let i = words.length - 1; i > 0; i--) { // shuffle
+      const j = Math.floor(Math.random() * (i + 1));
+      [words[i], words[j]] = [words[j], words[i]];
+    }
+    const two = words.slice(0, 2);
+
+    // Assign it the *next* pastel (same as it will be when solved)
+    const color = PASTELS[Math.min(solvedGroups.length, PASTELS.length - 1)] || PASTELS[0];
+
+    // Stage hint state
+    stagedHelp = { group, hinted: new Set(two), color };
+
+    // Move the two hinted tiles to the top of the unsolved layout (first row)
+    // 1) Remove them from wherever they are
+    const rest = layout.filter(w => !stagedHelp.hinted.has(w));
+    // 2) Put them at the front
+    layout = [...two, ...rest];
+
+    // Re-render to show colored, pinned tiles under solved rows
+    renderGrid();
+  });
+}
     btnGiveUp.addEventListener('click', giveUpRevealAll);
 
     // Boot
@@ -401,6 +459,7 @@ updateCheckUI();
   </script>
 </body>
 </html>
+
 
 
 
