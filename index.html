@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -168,7 +167,6 @@
       <label for="puzzle-select" class="sr-only">Choose puzzle</label>
       <select id="puzzle-select" aria-label="Choose puzzle"></select>
       <button id="btn-help" title="Reveal one random group">Help</button>
-      <button id="btn-giveup" title="Reveal all groups">Give Up</button>
     </div>
 
     <div id="solved" class="solved-list" aria-live="polite"></div>
@@ -209,7 +207,6 @@
     const solvedList = $('#solved');
     const btnCheck = $('#btn-check');
     const btnHelp = $('#btn-help');
-    const btnGiveUp = $('#btn-giveup');
     const msg = $('#msg');
 
     // Font-fit helpers
@@ -441,12 +438,7 @@
       });
     }
 
-    function giveUpRevealAll() {
-      loadPuzzle(currentDate).then(p => {
-        const unsolved = p.categories.filter(c => !solvedGroups.some(g => g.title === c.title));
-        unsolved.forEach(g => revealGroup(g));
-      });
-    }
+
 
     // Wire up controls
     btnCheck.addEventListener('click', checkSelection);
@@ -493,7 +485,6 @@ function handleHelp() {
     renderGrid();
   });
 }
-    btnGiveUp.addEventListener('click', giveUpRevealAll);
 
     // Boot
     (async function init(){
@@ -508,5 +499,6 @@ function handleHelp() {
   </script>
 </body>
 </html>
+
 
 
