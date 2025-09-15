@@ -1,36 +1,25 @@
 name: scrape
-
 on:
-  schedule:
-    - cron: "05 0 * * *"   # every 5 minutes
-  workflow_dispatch: {}
-
-
-
-
-permissions:
-  contents: write
-
-concurrency:
-  group: daily-html
-  cancel-in-progress: true
-
+  workflow_dispatch:
 jobs:
-  sync:
+  scrape:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: scrape
+        uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
         with:
-          node-version: '20'
-      - name: Fetch + update files
-        run: node scripts/fetch-cmt.mjs
-      - name: Show latest.json
-        run: test -f puzzles/latest.json && cat puzzles/latest.json || true
-      - name: Commit & push
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "chore: update connections (html) $(date -u +%F)" || echo "No changes"
-          git push
+          python-version: '3.9'
+      - name: Installed package list
+        run: apt list --installed
+      - name: Remove Chrome
+        run: sudo apt purge google-chrome-stable
+      - name: Remove default Chromium
+        run: sudo apt purge chromium-browser
+      - name: Install a new Chromium
+        run: sudo apt install -y chromium-browser
+      - name: Install all necessary packages
+        run: pip install requests beautifulsoup4 pandas webdriver-manager selenium
+      - name: Run the scraping script
+        run: python scraper.py
