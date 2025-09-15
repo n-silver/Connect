@@ -2,39 +2,39 @@
   "date": "2025-09-15",
   "categories": [
     {
-      "title": "FLOORING OPTIONS",
+      "title": "ENTRYWAY",
       "words": [
-        "CARPET",
-        "LAMINATE",
-        "TILE",
-        "WOOD"
+        "DOOR",
+        "GATE",
+        "HATCH",
+        "PORTAL"
       ]
     },
     {
-      "title": "BEACHY AREA",
+      "title": "MAP FEATURES",
       "words": [
-        "BANK",
-        "COAST",
-        "SHORE",
-        "STRAND"
+        "COMPASS",
+        "INSET",
+        "KEY",
+        "SCALE"
       ]
     },
     {
-      "title": "ROMANTIC VIBE",
+      "title": "SURPASS",
       "words": [
-        "CHEMISTRY",
-        "CONNECTION",
-        "FIREWORKS",
-        "SPARK"
+        "BEAT",
+        "BEST",
+        "BETTER",
+        "TOP"
       ]
     },
     {
-      "title": "MEMBER OF A CLASSIC BACKING BAND",
+      "title": "STREETS WITH SYMBOLIC IMPORTANCE",
       "words": [
-        "BANSHEE",
-        "HEARTBREAKER",
-        "PIP",
-        "WAILER"
+        "DOWNING",
+        "FLEET",
+        "MAIN",
+        "WALL"
       ]
     }
   ]
