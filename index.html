@@ -96,54 +96,60 @@
     .tile.solved.solved-group.p-pink   { background:#ffe0ea !important; border-color:#ffc3d6 !important; color:#3a0e20 !important; }
     .tile.solved.solved-group.p-green  { background:#e6f7e6 !important; border-color:#c9ebc9 !important; color:#0f2a0f !important; }
 
-/* === Hint ring using a conic-gradient around the border (no gaps) === */
-/* Ring thickness (change to 1px/3px if you like) */
-:root { --hint-ring: 2px; }
+/* Thickness of the animated ring */
+:root { --hint-ring: 2px; } /* try 1px–3px */
 
-/* Base tile look stays identical */
+/* Keep the normal tile look */
 .tile.hint {
   position: relative;
-  border-radius: 14px;                 /* match your .tile radius */
-  border: var(--hint-ring) solid transparent; /* gradient will live in this border */
-  /* Two backgrounds:
-     1) inner layer = the normal tile fill (we swap this on hover/selected)
-     2) outer layer = the pastel ring drawn in the border box */
-  background:
-    linear-gradient(var(--hint-fill, #fff), var(--hint-fill, #fff)) padding-box,
-    conic-gradient(
-      #FAE16F 0deg 90deg,   /* Yellow */
-      #B9D188 90deg 180deg, /* Green  */
-      #B0C2ED 180deg 270deg,/* Blue   */
-      #CFABD7 270deg 360deg /* Pink   */
-    ) border-box;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;                   /* match your .tile */
   box-shadow: 0 1px 2px rgba(0,0,0,.05); /* same subtle shadow */
+  z-index: 0;
 }
 
-/* Make the inner fill follow your normal states */
-.tile.hint:hover       { --hint-fill: #f3f4f6; }  /* same as .tile:hover */
-.tile.hint.sel         { --hint-fill: #efefef; }  /* same as .tile.sel  */
-/* If both selected and hovered, still use the selected shade */
-.tile.hint.sel:hover   { --hint-fill: #efefef; }
+/* Animated pastel conic gradient ring that hugs the border exactly */
+.tile.hint::before {
+  content: "";
+  position: absolute;
+  inset: 0;                   /* no gap: sits exactly on the tile box */
+  border-radius: inherit;
+  padding: var(--hint-ring);  /* ring thickness */
+  background: conic-gradient(
+    #FAE16F,   /* yellow */
+    #B9D188,   /* green  */
+    #B0C2ED,   /* blue   */
+    #CFABD7,   /* pink   */
+    #FAE16F    /* wrap back to yellow for smooth loop */
+  );
+  background-size: 100% 100%;
+  pointer-events: none;
 
-    .tile.hint {
-  animation: hintSpin 16s linear infinite;
-  background-size: 100% 100%, 100% 100%; /* keep sizing explicit */
+  /* Mask so only the border shows (inside is cut out) */
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+
+  /* Smooth rotation; layout unaffected */
+  animation: hintPastelSpin 10s linear infinite;
+  will-change: transform; /* GPU-friendly */
 }
-@keyframes hintSpin {
-  to {
-    background: 
-      linear-gradient(var(--hint-fill, #fff), var(--hint-fill, #fff)) padding-box,
-      conic-gradient(
-        from 360deg,
-        #FAE16F 0deg 90deg,
-        #B9D188 90deg 180deg,
-        #B0C2ED 180deg 270deg,
-        #CFABD7 270deg 360deg
-      ) border-box;
-  }
+
+@keyframes hintPastelSpin {
+  to { transform: rotate(360deg); }
 }
+
+/* Preserve your normal hover/selected fills */
+.tile.hint:hover     { background: #f3f4f6; } /* same as .tile:hover */
+.tile.hint.sel       { background: #efefef; } /* same as .tile.sel  */
+.tile.hint.sel:hover { background: #efefef; } /* selected wins      */
+
+/* Respect reduced motion */
 @media (prefers-reduced-motion: reduce) {
-  .tile.hint { animation: none; }
+  .tile.hint::before { animation: none; }
 }
 
 
@@ -515,6 +521,7 @@ function handleHelp() {
   </script>
 </body>
 </html>
+
 
 
 
