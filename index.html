@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Connections</title>
+  <title>Connect</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="format-detection" content="telephone=no">
 
@@ -38,6 +38,34 @@
     a { color: inherit; text-decoration: none; }
     .sr-only { position:absolute!important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 
+.topbar {
+  display: flex;
+  align-items: center;           /* vertically center select against the H1 */
+  justify-content: space-between;/* push to opposite sides */
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+/* Optional: tune heading spacing/size */
+.topbar .title { 
+  margin: 10px 0; 
+  font-size: 28px;               /* adjust to taste */
+  font-weight: 700; 
+  letter-spacing: .2px; 
+}
+
+/* Keep the select tidy on one line */
+.topbar .date-slot select {
+  min-width: 200px;              /* tweak if you want narrower/wider */
+  white-space: nowrap;
+}
+
+/* On very small screens, keep them on one line if possible; otherwise let it wrap */
+@media (max-width: 360px) {
+  .topbar .date-slot select { min-width: 160px; }
+}
+
+    
     /* Grid & tiles */
 
 .check-wrap {
@@ -65,10 +93,7 @@
   color: #fff;
 }
 
-/* optional: hint that it’s inert until 4 picked */
-.check-btn[aria-disabled="true"]:not(.ready) {
-  opacity: .75;
-}
+
 
 .actions {
   display: flex;
@@ -190,12 +215,15 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>connect</h1>
+    <!-- Top bar: title left, date select right -->
+<div class="topbar">
+  <h1 class="title">Connections</h1>
+  <div class="date-slot">
+    <label for="puzzle-select" class="sr-only">Choose puzzle</label>
+    <select id="puzzle-select" aria-label="Choose puzzle"></select>
+  </div>
+</div>
 
-    <div class="toolbar">
-      <label for="puzzle-select" class="sr-only">Choose puzzle</label>
-      <select id="puzzle-select" aria-label="Choose puzzle"></select>
-    </div>
 
     <div id="solved" class="solved-list" aria-live="polite"></div>
     <div id="grid" class="grid" role="grid" aria-label="Connections grid of 16 tiles"></div>
@@ -531,6 +559,7 @@ function handleHelp() {
   </script>
 </body>
 </html>
+
 
 
 
