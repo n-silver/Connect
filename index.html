@@ -121,7 +121,6 @@
       <button id="btn-reset" title="Reset current puzzle">Reset</button>
       <button id="btn-help" title="Reveal one random group">Help</button>
       <button id="btn-giveup" title="Reveal all groups">Give Up</button>
-      <span id="meta" class="sub" aria-live="polite"></span>
     </div>
 
     <div id="solved" class="solved-list" aria-live="polite"></div>
@@ -163,7 +162,6 @@
     const btnHelp = $('#btn-help');
     const btnGiveUp = $('#btn-giveup');
     const msg = $('#msg');
-    const meta = $('#meta');
 
     // Font-fit helpers
     const BASE_SIZE = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tile-font')) || 14;
@@ -323,7 +321,6 @@
       const p = await loadPuzzle(currentDate);
       buildInitialLayout(p);
       renderGrid();
-      meta.textContent = `Date: ${p.date || '—'}`;
     }
 
     function toggleWord(el, word) {
@@ -415,6 +412,7 @@ updateCheckUI();
   </script>
 </body>
 </html>
+
 
 
 
