@@ -2,7 +2,7 @@ name: Daily Connections (HTML source)
 
 on:
   schedule:
-    - cron: '5 1 * * *'   # tiny buffer after site updates
+    - cron: '18 1 * * *'   # 01:05 UTC daily
   workflow_dispatch: {}
 
 permissions:
