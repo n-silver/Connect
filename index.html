@@ -24,49 +24,7 @@
     *, *::before, *::after { -webkit-text-fill-color: currentColor; box-sizing:border-box; }
     body { margin:0; font-family:'Montserrat', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:var(--bg); color:var(--fg); }
 
-/* Shimmer on the text of HINTED tiles */
-.tile.hint .tile-label {
-  position: relative;
-  display: inline-block;
-}
 
-/* Duplicate the text and apply a light sheen that moves left→right */
-.tile.hint .tile-label::after {
-  content: attr(data-text);
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-
-  /* show gradient only within glyphs */
-  color: transparent;
-  -webkit-text-fill-color: transparent !important; /* override global rule */
-  -webkit-background-clip: text;
-          background-clip: text;
-
-  /* light grey sheen (use white so it’s visible over black text) */
-  background: linear-gradient(
-    90deg,
-    rgba(255,255,255,0) 0%,
-    rgba(255,255,255,.35) 45%,
-    rgba(255,255,255,.85) 50%,
-    rgba(255,255,255,.35) 55%,
-    rgba(255,255,255,0) 100%
-  );
-  background-size: 300% 100%;
-  background-position: 0% 50%;
-  animation: hintLabelShimmer 2.8s linear infinite;
-  opacity: .9;
-  /* optional: makes the sheen pop on dark text, safe to remove if too strong */
-  mix-blend-mode: screen;
-}
-
-@keyframes hintLabelShimmer {
-  0%   { background-position:   0% 50%; }
-  100% { background-position: 300% 50%; }
-}
-
-
-    
     .wrap { max-width:900px; margin:0 auto; padding:16px; }
     h1 { margin:10px 0 20px; fontsize: var(--heading-size); font-weight:700; letter-spacing:.2px; }
     .sub { color:var(--muted); font-size:12px; margin:0 0 12px; }
@@ -615,6 +573,7 @@ function handleHelp() {
   </script>
 </body>
 </html>
+
 
 
 
