@@ -29,67 +29,86 @@ function decodeEntities(t) {
     .replace(/&rsquo;|&apos;/g, "'");
 }
 
-// Extract the inner HTML of a tag by id (simple and fast for known markup)
-function extractInnerById(html, id) {
-  const re = new RegExp(
-    `<span[^>]*id=["']${id}["'][^>]*>([\\s\\S]*?)<\\/span>`,
-    'i'
-  );
-  const m = re.exec(html);
-  return m ? m[1] : null;
+// --- replace your old "extractInnerById" and parseFromExactSection with this ---
+
+function sliceFromHeading(html) {
+  const anchorRe = /<h2[^>]*>\s*Today'?s NYT Connections Puzzle Answer\s*<\/h2>/i;
+  const i = html.search(anchorRe);
+  return i >= 0 ? html.slice(i) : null;
 }
 
-// From one answer-text span inner HTML, return {title, words}
+// pull the first 4 answer-text spans under the heading, regardless of id/index
+function extractAnswerSpans(sectionHtml) {
+  if (!sectionHtml) return null;
+  const re = /<span[^>]*class=["'][^"']*\banswer-text\b[^"']*["'][^>]*>([\s\S]*?)<\/span>/gi;
+  const blocks = [];
+  let m;
+  while ((m = re.exec(sectionHtml)) && blocks.length < 4) {
+    blocks.push(m[1]);
+  }
+  return blocks.length === 4 ? blocks : null;
+}
+
 function parseAnswerSpan(innerHtml) {
   if (!innerHtml) return null;
-  const html = decodeEntities(innerHtml);
+  const html = innerHtml
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&ldquo;|&rdquo;|&quot;/g, '"')
+    .replace(/&rsquo;|&apos;/g, "'");
 
-  // Grab all <p>...</p> blocks inside the span
-  const pBlocks = [];
+  // pull <p> blocks
+  const ps = [];
   const reP = /<p[^>]*>([\s\S]*?)<\/p>/gi;
   let m;
   while ((m = reP.exec(html))) {
-    const txt = m[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim(); // strip any inline tags
-    if (txt) pBlocks.push(txt);
+    const txt = m[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+    if (txt) ps.push(txt);
   }
-  if (pBlocks.length === 0) return null;
+  if (!ps.length) return null;
 
-  // First <p> should have the strong title (ends with colon)
-  const first = pBlocks[0];
-  const mTitle = first.match(/^(.*?):\s*$/) || first.match(/^(.*?):/);
-  const rawTitle = mTitle ? mTitle[1] : first;
-  const title = cleanTitle(rawTitle);
+  // first <p> is the title (strip trailing colon)
+  const rawTitle = ps[0].replace(/:\s*$/, '');
+  const title = rawTitle.replace(/[“”"’]+/g, '').trim();
 
-  // Next non-empty <p> should be the comma list
-  let wordsLine = '';
-  for (let i = 1; i < pBlocks.length; i++) {
-    if (pBlocks[i]) { wordsLine = pBlocks[i]; break; }
-  }
+  // next line: comma list of 4 words (fallback: 4 one-per-line)
   let words = [];
-  if (wordsLine) {
-    words = wordsLine.split(',').map(s => cleanWord(s)).filter(isWord).slice(0,4);
+  if (ps[1]) {
+    words = ps[1].split(',').map(s =>
+      s.replace(/[“”"’]+/g, '').replace(/[^A-Za-z'’-]/g, '').toUpperCase().trim()
+    ).filter(Boolean);
   }
-
-  // Fallback: if no comma list, try to pick 4 single-word lines from subsequent <p>
-  if (words.length !== 4 && pBlocks.length >= 5) {
+  if (words.length !== 4) {
     const buf = [];
-    for (let i = 1; i < pBlocks.length; i++) {
-      const w = cleanWord(pBlocks[i]);
-      if (isWord(w)) buf.push(w);
-      if (buf.length === 4) break;
+    for (let i = 1; i < ps.length && buf.length < 4; i++) {
+      const w = ps[i].replace(/[“”"’]+/g, '').replace(/[^A-Za-z'’-]/g, '').toUpperCase().trim();
+      if (w) buf.push(w);
     }
     if (buf.length === 4) words = buf;
   }
 
-  if (!title || words.length !== 4) return null;
-  return { title, words };
+  return (title && words.length === 4) ? { title, words } : null;
 }
 
-async function fetchHtmlFresh() {
-  const url = `${URL}?ts=${Date.now()}`; // cache-buster
-  const res = await fetch(url, {
+function parseFromExactSection(html, todayISO) {
+  const section = sliceFromHeading(html);
+  if (!section) return null;
+
+  const spans = extractAnswerSpans(section);
+  if (!spans) return null;
+
+  const cats = spans.map(parseAnswerSpan).filter(Boolean);
+  if (cats.length !== 4) return null;
+
+  return { date: todayISO, categories: cats };
+}
+
+// --- enhance fetchPuzzle to try main page, then /amp, and do a stale check ---
+
+async function fetchHtmlFresh(url) {
+  const res = await fetch(`${url}?ts=${Date.now()}`, {
     headers: {
-      'Cache-Control': 'no-cache, no-store',
+      'Cache-Control': 'no-cache, no-store, max-age=0',
       'Pragma': 'no-cache',
       'Accept-Language': 'en-GB,en;q=0.9',
       'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36'
@@ -99,75 +118,51 @@ async function fetchHtmlFresh() {
   return await res.text();
 }
 
-// Parse exactly the structure you provided
-function parseFromExactSection(html) {
-  const anchorRe = /<h2[^>]*>\s*Today'?s NYT Connections Puzzle Answer\s*<\/h2>/i;
-  const anchor = html.search(anchorRe);
-  if (anchor < 0) return null;
-
-  // Extract each known span by id = wordle-index-1-answerN-text (N=1..4)
-  const groups = [];
-  for (let n = 1; n <= 4; n++) {
-    const inner = extractInnerById(html.slice(anchor), `wordle-index-1-answer${n}-text`);
-    const parsed = parseAnswerSpan(inner);
-    if (!parsed) return null;
-    groups.push(parsed);
-  }
-
-  // Map to canonical color order: 1=Yellow, 2=Green, 3=Blue, 4=Purple
-  return {
-    date: todayUTC,
-    categories: groups.map(g => ({ title: g.title, words: g.words }))
-  };
+async function readLatestWordsIfAny(fs, path, puzzlesDir) {
+  try {
+    const raw = await fs.readFile(path.join(puzzlesDir, 'latest.json'), 'utf8');
+    const j = JSON.parse(raw);
+    const set = new Set(j.categories?.flatMap(c => c.words) || []);
+    return set;
+  } catch { return null; }
 }
 
 async function fetchPuzzle() {
-  let html = await fetchHtmlFresh();
-  let puzzle = parseFromExactSection(html);
+  const todayISO = new Date().toISOString().slice(0,10);
+  const MAIN = 'https://capitalizemytitle.com/todays-nyt-connections-answers/';
+  const AMP  = 'https://capitalizemytitle.com/todays-nyt-connections-answers/amp/';
 
-  // If not found on first try (edge cache), wait briefly and retry once
-  if (!puzzle) {
-    await sleep(3000);
-    html = await fetchHtmlFresh();
-    puzzle = parseFromExactSection(html);
+  // 1) try main
+  let html = await fetchHtmlFresh(MAIN);
+  let puzzle = parseFromExactSection(html, todayISO);
+
+  // 2) stale check vs latest.json; if identical words, try AMP
+  const prevSet = await readLatestWordsIfAny(fs, path, PUZZLES_DIR);
+  const sameAsPrev = () => {
+    if (!puzzle || !prevSet) return false;
+    const cur = new Set(puzzle.categories.flatMap(c => c.words));
+    if (cur.size !== prevSet.size) return false;
+    for (const w of cur) if (!prevSet.has(w)) return false;
+    return true;
+  };
+
+  if (!puzzle || sameAsPrev()) {
+    // try AMP (often fresher, no JS)
+    const ampHtml = await fetchHtmlFresh(AMP);
+    const ampPuzzle = parseFromExactSection(ampHtml, todayISO);
+    if (ampPuzzle && (!puzzle || sameAsPrev())) {
+      puzzle = ampPuzzle;
+    }
   }
-  if (!puzzle) throw new Error('Could not parse answers under the specified section.');
 
+  // 3) last resort: wait and refetch main once more
+  if (!puzzle || sameAsPrev()) {
+    await new Promise(r => setTimeout(r, 3000));
+    html = await fetchHtmlFresh(MAIN);
+    const retry = parseFromExactSection(html, todayISO);
+    if (retry) puzzle = retry;
+  }
+
+  if (!puzzle) throw new Error('Could not parse 4 categories from page.');
   return puzzle;
 }
-
-async function writeFiles(puzzle) {
-  await fs.mkdir(PUZZLES_DIR, { recursive: true });
-
-  // dated + latest
-  await fs.writeFile(path.join(PUZZLES_DIR, `${puzzle.date}.json`), JSON.stringify(puzzle, null, 2));
-  await fs.writeFile(path.join(PUZZLES_DIR, `latest.json`), JSON.stringify(puzzle, null, 2));
-
-  // manifest (newest first)
-  const manifestPath = path.join(PUZZLES_DIR, 'manifest.json');
-  let manifest = [];
-  try {
-    const raw = await fs.readFile(manifestPath, 'utf8');
-    const arr = JSON.parse(raw);
-    if (Array.isArray(arr)) manifest = arr;
-  } catch {}
-  manifest = [puzzle.date, ...manifest.filter(d => d !== puzzle.date)]
-    .sort((a, b) => (a < b ? 1 : -1));
-  await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2));
-}
-
-async function main() {
-  const DRY = process.argv.includes('--dry-run');
-  const puzzle = await fetchPuzzle();
-
-  if (DRY) {
-    console.log('[DRY RUN] Parsed puzzle:');
-    console.log(JSON.stringify(puzzle, null, 2));
-    return;
-  }
-
-  await writeFiles(puzzle);
-  console.log(`[OK] Saved ${puzzle.date} (latest + archive) and updated puzzles/manifest.json`);
-}
-
-main().catch(err => { console.error(err); process.exit(1); });
