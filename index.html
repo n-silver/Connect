@@ -384,16 +384,8 @@
         cont.appendChild(title);
         cont.appendChild(wordsLine);
         grid.appendChild(cont);
-        // BEFORE
-// btn.textContent = w;
-
-// AFTER (safe: no innerHTML)
-const label = document.createElement('span');
-label.className = 'tile-label';
-label.setAttribute('data-text', w);
-label.textContent = w;
-btn.appendChild(label);
-
+         btn.textContent = w;
+    
       });
 
       // remaining tiles
@@ -569,6 +561,7 @@ function handleHelp() {
   </script>
 </body>
 </html>
+
 
 
 
