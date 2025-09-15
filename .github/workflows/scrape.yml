@@ -3,7 +3,6 @@ name: scrape
 on:
   schedule:
     - cron: '*/5 * * * *'   # every 5 minutes
-  workflow_dispatch: {}    # manual runs
 
 permissions:
   contents: write
