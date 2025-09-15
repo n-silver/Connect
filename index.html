@@ -96,6 +96,20 @@
     .tile.solved.solved-group.p-pink   { background:#ffe0ea !important; border-color:#ffc3d6 !important; color:#3a0e20 !important; }
     .tile.solved.solved-group.p-green  { background:#e6f7e6 !important; border-color:#c9ebc9 !important; color:#0f2a0f !important; }
 
+    /* Use the border colour as the fill for solved groups (merged big tile + chips) */
+.tile.solved.solved-group.p-blue,
+.solved.p-blue      { background:#cfe5ff; border-color:#cfe5ff; }
+
+.tile.solved.solved-group.p-yellow,
+.solved.p-yellow    { background:#ffe78a; border-color:#ffe78a; }
+
+.tile.solved.solved-group.p-pink,
+.solved.p-pink      { background:#ffc3d6; border-color:#ffc3d6; }
+
+.tile.solved.solved-group.p-green,
+.solved.p-green     { background:#c9ebc9; border-color:#c9ebc9; }
+
+
 /* Animated hint ring using your pastel palette (flows around the border) */
 :root { --hint-ring: 2px; } /* thickness: try 1–3px */
 
@@ -508,6 +522,7 @@ function handleHelp() {
   </script>
 </body>
 </html>
+
 
 
 
