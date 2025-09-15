@@ -88,7 +88,7 @@
 
     
 /* Animated pastel flow ring for ANY selected tile */
-:root { --sel-ring: 1px; } /* ring thickness; 1px matches your normal border */
+:root { --sel-ring: 2px; } /* ring thickness; 1px matches your normal border */
 
 .tile { --sel-fill:#fff; } /* inner fill default (white) */
 
@@ -113,9 +113,6 @@
   will-change: background-position;
   box-shadow: 0 1px 2px rgba(0,0,0,.05); /* keep the subtle shadow */
 }
-
-/* Hover tint for selected tiles: just change the inner fill var */
-.tile.sel:hover { --sel-fill:#f3f4f6; }
 
 @keyframes selPastelFlow {
   0%   { background-position: 0 0,   0% 50%; }
@@ -505,6 +502,7 @@ function handleHelp() {
   </script>
 </body>
 </html>
+
 
 
 
