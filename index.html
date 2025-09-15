@@ -85,48 +85,6 @@
     .tile.solved { opacity:.95; }
     .tile:focus-visible { outline:2px solid var(--focus); outline-offset:2px; }
 
-/* === Hinted label shimmer (put this after your .tile styles) === */
-.tile.hint .tile-label {
-  position: relative;
-  display: inline-block;
-}
-
-.tile.hint .tile-label::after {
-  content: attr(data-text);
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-
-  /* Make the overlay text show only the gradient (override the global fill) */
-  color: transparent;
-  -webkit-text-fill-color: transparent !important;
-  -webkit-background-clip: text;
-          background-clip: text;
-
-  /* Gentle light-grey/white sheen that sweeps left→right */
-  background: linear-gradient(
-    90deg,
-    rgba(255,255,255,0) 0%,
-    rgba(210,210,210,.35) 45%,
-    rgba(255,255,255,.9) 50%,
-    rgba(210,210,210,.35) 55%,
-    rgba(255,255,255,0) 100%
-  );
-  background-size: 300% 100%;
-  background-position: 0% 50%;
-  animation: hintLabelShimmer 2.8s linear infinite;
-  opacity: .9;
-}
-
-@keyframes hintLabelShimmer {
-  0%   { background-position:   0% 50%; }
-  100% { background-position: 300% 50%; }
-}
-
-/* Optional: tone down the shimmer when the hint tile is selected */
-.tile.sel.hint .tile-label::after { opacity: .75; }
-
-
     
 /* Animated pastel flow ring for ANY selected tile */
 :root { --sel-ring: 3px; } /* ring thickness; 1px matches your normal border */
@@ -611,6 +569,7 @@ function handleHelp() {
   </script>
 </body>
 </html>
+
 
 
 
