@@ -39,49 +39,6 @@
     button:disabled { opacity:.5; cursor:not-allowed; }
     a { color: inherit; text-decoration: none; }
     .sr-only { position:absolute!important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
-
-/* Shimmer for the label text on HINTED tiles only */
-.tile.hint .tile-label {
-  position: relative;
-  display: inline-block;
-}
-
-/* Duplicate the text and sweep a light sheen across it */
-.tile.hint .tile-label::after {
-  content: attr(data-text);
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-
-  /* ensure the overlay shows gradient only inside glyphs */
-  color: transparent;
-  -webkit-text-fill-color: transparent !important; /* override global fill */
-  -webkit-background-clip: text;
-          background-clip: text;
-
-  /* light grey/white shimmer so it’s visible over black text */
-  background: linear-gradient(
-    90deg,
-    rgba(255,255,255,0) 0%,
-    rgba(210,210,210,.35) 45%,
-    rgba(255,255,255,.9) 50%,
-    rgba(210,210,210,.35) 55%,
-    rgba(255,255,255,0) 100%
-  );
-  background-size: 300% 100%;
-  background-position: 0% 50%;
-  animation: hintLabelShimmer 2.8s linear infinite;
-  opacity: .9;
-}
-
-@keyframes hintLabelShimmer {
-  0%   { background-position:   0% 50%; }
-  100% { background-position: 300% 50%; }
-}
-
-/* (Optional) calm the shimmer a touch while selected */
-.tile.sel.hint .tile-label::after { opacity: .75; }
-
     
     /* Grid & tiles */
 
@@ -128,6 +85,46 @@
     .tile.solved { opacity:.95; }
     .tile:focus-visible { outline:2px solid var(--focus); outline-offset:2px; }
 
+/* === Hinted label shimmer (put this after your .tile styles) === */
+.tile.hint .tile-label {
+  position: relative;
+  display: inline-block;
+}
+
+.tile.hint .tile-label::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+
+  /* Make the overlay text show only the gradient (override the global fill) */
+  color: transparent;
+  -webkit-text-fill-color: transparent !important;
+  -webkit-background-clip: text;
+          background-clip: text;
+
+  /* Gentle light-grey/white sheen that sweeps left→right */
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0) 0%,
+    rgba(210,210,210,.35) 45%,
+    rgba(255,255,255,.9) 50%,
+    rgba(210,210,210,.35) 55%,
+    rgba(255,255,255,0) 100%
+  );
+  background-size: 300% 100%;
+  background-position: 0% 50%;
+  animation: hintLabelShimmer 2.8s linear infinite;
+  opacity: .9;
+}
+
+@keyframes hintLabelShimmer {
+  0%   { background-position:   0% 50%; }
+  100% { background-position: 300% 50%; }
+}
+
+/* Optional: tone down the shimmer when the hint tile is selected */
+.tile.sel.hint .tile-label::after { opacity: .75; }
 
 
     
@@ -614,6 +611,7 @@ function handleHelp() {
   </script>
 </body>
 </html>
+
 
 
 
