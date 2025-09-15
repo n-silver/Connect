@@ -389,18 +389,6 @@
       });
 
       // remaining tiles
-
-      // helper once, near your other utilities
-function escapeHtml(s){
-  return String(s)
-    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;").replace(/"/g,"&quot;")
-    .replace(/'/g,"&#39;");
-}
-
-// inside renderGrid(), for each unsolved tile:
-btn.innerHTML = `<span class="tile-label" data-text="${escapeHtml(w)}">${escapeHtml(w)}</span>`;
-
       for (const w of layout) {
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -573,6 +561,7 @@ function handleHelp() {
   </script>
 </body>
 </html>
+
 
 
 
