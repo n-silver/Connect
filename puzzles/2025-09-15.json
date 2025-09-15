@@ -1,0 +1,41 @@
+{
+  "date": "2025-09-15",
+  "categories": [
+    {
+      "title": "FLOORING OPTIONS",
+      "words": [
+        "CARPET",
+        "LAMINATE",
+        "TILE",
+        "WOOD"
+      ]
+    },
+    {
+      "title": "BEACHY AREA",
+      "words": [
+        "BANK",
+        "COAST",
+        "SHORE",
+        "STRAND"
+      ]
+    },
+    {
+      "title": "ROMANTIC VIBE",
+      "words": [
+        "CHEMISTRY",
+        "CONNECTION",
+        "FIREWORKS",
+        "SPARK"
+      ]
+    },
+    {
+      "title": "MEMBER OF A CLASSIC BACKING BAND",
+      "words": [
+        "BANSHEE",
+        "HEARTBREAKER",
+        "PIP",
+        "WAILER"
+      ]
+    }
+  ]
+}
