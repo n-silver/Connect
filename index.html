@@ -24,7 +24,6 @@
     *, *::before, *::after { -webkit-text-fill-color: currentColor; box-sizing:border-box; }
     body { margin:0; font-family:'Montserrat', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:var(--bg); color:var(--fg); }
 
-
     .wrap { max-width:900px; margin:0 auto; padding:16px; }
     h1 { margin:10px 0 20px; fontsize: var(--heading-size); font-weight:700; letter-spacing:.2px; }
     .sub { color:var(--muted); font-size:12px; margin:0 0 12px; }
@@ -39,7 +38,7 @@
     button:disabled { opacity:.5; cursor:not-allowed; }
     a { color: inherit; text-decoration: none; }
     .sr-only { position:absolute!important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
-    
+
     /* Grid & tiles */
 
 .check-wrap {
@@ -82,48 +81,10 @@
       transition: background .15s ease, border-color .15s ease, transform .15s ease;
       user-select:none; overflow:hidden; white-space:nowrap; color: var(--fg);
     }
+    .tile:hover { background:#f3f4f6; }
+    .tile.sel { background:#efefef; border-color:var(--border); }
     .tile.solved { opacity:.95; }
     .tile:focus-visible { outline:2px solid var(--focus); outline-offset:2px; }
-
-    
-/* Animated pastel flow ring for ANY selected tile */
-:root { --sel-ring: 3px; } /* ring thickness; 1px matches your normal border */
-
-.tile { --sel-fill:#fff; } /* inner fill default (white) */
-
-.tile.sel {
-  /* Make the gradient live in the border so it fits perfectly (no gaps/clipping) */
-  border: var(--sel-ring) solid transparent;
-  border-radius: 14px; /* match your .tile radius exactly */
-  background:
-    /* inner layer: the tile fill (changes on hover) */
-    linear-gradient(var(--sel-fill), var(--sel-fill)) padding-box,
-    /* outer layer: animated pastel flow ring */
-    linear-gradient(90deg,
-      #FFE78A 0%,
-      #C9EBC9 25%,
-      #CFE5FF 50%,
-      #FFC3D6 75%,
-      #FFE78A 100%
-    ) border-box;
-  background-size: 100% 100%, 300% 100%;
-  background-position: 0 0, 0% 50%;
-  animation: selPastelFlow 6s linear infinite;
-  will-change: background-position;
-  box-shadow: 0 1px 2px rgba(0,0,0,.05); /* keep the subtle shadow */
-}
-
-@keyframes selPastelFlow {
-  0%   { background-position: 0 0,   0% 50%; }
-  100% { background-position: 0 0, 300% 50%; }
-}
-
-/* Reduced motion */
-@media (prefers-reduced-motion: reduce) {
-  .tile.sel { animation: none; }
-}
-
-
 
     .status { margin:14px 0; font-size:14px; color:var(--muted); min-height:1.5em; text-align:center; }
     .footer { text-align:center; color:var(--muted); font-size:12px; margin-top:16px; }
@@ -136,6 +97,56 @@
     .tile.solved.solved-group.p-yellow { background:#fff7cc !important; border-color:#ffe78a !important; color:#3a3200 !important; }
     .tile.solved.solved-group.p-pink   { background:#ffe0ea !important; border-color:#ffc3d6 !important; color:#3a0e20 !important; }
     .tile.solved.solved-group.p-green  { background:#e6f7e6 !important; border-color:#c9ebc9 !important; color:#0f2a0f !important; }
+
+
+
+/* Animated hint ring using your pastel palette (flows around the border) */
+:root { --hint-ring: 2px; } /* thickness: try 1–3px */
+
+.tile.hint {
+  position: relative;
+  border-radius: 14px;                       /* match your .tile radius */
+  box-shadow: 0 1px 2px rgba(0,0,0,.05);
+  border: var(--hint-ring) solid transparent;/* ring lives in the border */
+  /* inner fill (padding-box) + animated pastel ring (border-box) */
+  --hint-fill: #fff;                         /* switches on hover/selected below */
+  background:
+    linear-gradient(var(--hint-fill), var(--hint-fill)) padding-box,
+    linear-gradient(90deg,
+      /* pastel palette (stronger “border” shades for visibility) */
+      #FFE78A 0%,    /* yellow  from p-yellow border-color */
+      #C9EBC9 25%,   /* green   from p-green  border-color */
+      #CFE5FF 50%,   /* blue    from p-blue   border-color */
+      #FFC3D6 75%,   /* pink    from p-pink   border-color */
+      #FFE78A 100%   /* wrap for seamless loop */
+    ) border-box;
+  background-size: 100% 100%, 300% 100%;
+  background-position: 0 0, 0% 50%;
+  animation: hintPastelFlow 6s linear infinite;
+  will-change: background-position;
+}
+
+@keyframes hintPastelFlow {
+  0%   { background-position: 0 0,   0% 50%; }
+  100% { background-position: 0 0, 300% 50%; }
+}
+
+/* Keep your normal hover/selected fills */
+.tile.hint:hover     { --hint-fill: #f3f4f6; } /* same as .tile:hover */
+.tile.hint.sel       { --hint-fill: #efefef; } /* same as .tile.sel  */
+.tile.hint.sel:hover { --hint-fill: #efefef; }
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .tile.hint { animation: none; }
+}
+
+
+
+
+
+
+
 
     
     /* Solved group container spanning full width */
@@ -151,54 +162,6 @@
     @media (max-width: 360px) {
       :root { --tile-font: 13px; --tile-h: 78px; --heading-size: clamp(100px, 6vw, 100px);}
     }
-
-
-/* Subtle light-grey shimmer that sweeps across the label text on hinted tiles */
-.tile.hint .tile-label {
-  position: relative;
-  display: inline-block; /* keeps pseudo overlay aligned to text width */
-}
-
-/* Overlay a duplicate of the text with a moving light-grey gradient */
-.tile.hint .tile-label::after {
-  content: attr(data-text);
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-
-  /* Make the overlay text show the gradient only (transparent glyphs) */
-  color: transparent;
-  -webkit-text-fill-color: transparent;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(0,0,0,.10) 40%,
-    rgba(0,0,0,.18) 50%,
-    rgba(0,0,0,.10) 60%,
-    transparent 100%
-  );
-  -webkit-background-clip: text;
-          background-clip: text;
-
-  /* Smooth left→right sweep */
-  background-size: 300% 100%;
-  background-position: 0% 50%;
-  animation: hintLabelShimmer 2.8s linear infinite;
-  opacity: .9; /* gentle; tweak 0.6–1.0 to taste */
-}
-
-@keyframes hintLabelShimmer {
-  0%   { background-position:   0% 50%; }
-  100% { background-position: 300% 50%; }
-}
-
-
-
-
-
-
-
-    
   </style>
 </head>
 <body>
@@ -331,16 +294,6 @@
       layout = words;
     }
 
-    function escapeHtml(s) {
-  return String(s)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-
     function rebuildLayoutSolvedFirst() {
       const top = [];
       const seen = new Set();
@@ -384,8 +337,6 @@
         cont.appendChild(title);
         cont.appendChild(wordsLine);
         grid.appendChild(cont);
-         btn.textContent = w;
-    
       });
 
       // remaining tiles
@@ -393,7 +344,7 @@
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'tile';
-        btn.innerHTML = `<span class="tile-label" data-text="${escapeHtml(w)}">${escapeHtml(w)}</span>`;
+        btn.textContent = w;
         // HINT: color the hinted tiles
         if (stagedHelp && stagedHelp.hinted && stagedHelp.hinted.has(w)) {
           btn.classList.add('hint', stagedHelp.color);
@@ -561,46 +512,3 @@ function handleHelp() {
   </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
