@@ -1,9 +1,8 @@
-name: Scrape
+name: scrape
 
 on:
   schedule:
-    - cron: '30 1 * * *'   # 01:05 UTC daily
-  workflow_dispatch: {}
+    - cron: '*/5 * * * *'   # 01:05 UTC daily
 
 permissions:
   contents: write
