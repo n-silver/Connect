@@ -96,11 +96,27 @@
     .tile.solved.solved-group.p-pink   { background:#ffe0ea !important; border-color:#ffc3d6 !important; color:#3a0e20 !important; }
     .tile.solved.solved-group.p-green  { background:#e6f7e6 !important; border-color:#c9ebc9 !important; color:#0f2a0f !important; }
 
-    /* Hint styling for two-step Help */
-    .tile.hint.p-blue   { background:#e8f2ff; border-color:#cfe5ff; color:#0f253a; }
-    .tile.hint.p-yellow { background:#fff7cc; border-color:#ffe78a; color:#3a3200; }
-    .tile.hint.p-pink   { background:#ffe0ea; border-color:#ffc3d6; color:#3a0e20; }
-    .tile.hint.p-green  { background:#e6f7e6; border-color:#c9ebc9; color:#0f2a0f; }
+    /* Hinted tiles: white bg, black border, pastel pulse around them */
+.tile.hint {
+  background: #fff;                 /* keep normal background */
+  border: 2px solid #000 !important;/* black border, overrides .tile/.sel */
+  position: relative;
+  animation: hintPulse 1.4s ease-out infinite;
+}
+
+/* Color of the pulse per hint color */
+.tile.hint.p-blue   { --pulse-color: rgba(176,194,237,.70); } /* #B0C2ED-ish */
+.tile.hint.p-yellow { --pulse-color: rgba(250,225,111,.65); } /* #FAE16F-ish */
+.tile.hint.p-pink   { --pulse-color: rgba(207,171,215,.65); } /* #CFABD7-ish */
+.tile.hint.p-green  { --pulse-color: rgba(185,209,136,.65); } /* #B9D188-ish */
+
+/* Pulse ring animation (uses box-shadow as an expanding halo) */
+@keyframes hintPulse {
+  0%   { box-shadow: 0 0 0 0   var(--pulse-color, rgba(0,0,0,0)); }
+  70%  { box-shadow: 0 0 0 8px rgba(0,0,0,0); }
+  100% { box-shadow: 0 0 0 0   rgba(0,0,0,0); }
+}
+
     
     /* Solved group container spanning full width */
     .solved-group { grid-column:1 / -1; padding:12px; border-radius:14px; text-align:center; display:flex; flex-direction:column; gap:4px; }
@@ -332,23 +348,29 @@
     }
 
     function toggleWord(el, word) {
-      if (isSolvedWord(word)) return;
-      const i = selected.indexOf(word);
-      if (i >= 0) {
-        selected.splice(i,1);
-        el.classList.remove('sel');
-      } else {
-        if (selected.length === 4) {
-          clearSelectionClasses();
-          selected = [word];
-          el.classList.add('sel');
-        } else {
-          selected.push(word);
-          el.classList.add('sel');
-        }
-      }
-updateCheckUI();
+  if (isSolvedWord(word)) return;
+
+  const i = selected.indexOf(word);
+
+  if (i >= 0) {
+    // Deselect allowed (even for hinted tiles)
+    selected.splice(i, 1);
+    el.classList.remove('sel');
+  } else {
+    // Select
+    if (selected.length === 4) {
+      clearSelectionClasses();
+      selected = [word];
+      el.classList.add('sel');
+    } else {
+      selected.push(word);
+      el.classList.add('sel');
     }
+  }
+
+  if (typeof updateCheckUI === 'function') updateCheckUI();
+}
+
 
     function clearSelectionClasses() {
       $$('.tile.sel').forEach(n => n.classList.remove('sel'));
@@ -459,6 +481,7 @@ function handleHelp() {
   </script>
 </body>
 </html>
+
 
 
 
