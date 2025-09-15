@@ -152,6 +152,54 @@
     @media (max-width: 360px) {
       :root { --tile-font: 13px; --tile-h: 78px; --heading-size: clamp(100px, 6vw, 100px);}
     }
+
+
+/* Subtle light-grey shimmer that sweeps across the label text on hinted tiles */
+.tile.hint .tile-label {
+  position: relative;
+  display: inline-block; /* keeps pseudo overlay aligned to text width */
+}
+
+/* Overlay a duplicate of the text with a moving light-grey gradient */
+.tile.hint .tile-label::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+
+  /* Make the overlay text show the gradient only (transparent glyphs) */
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0,0,0,.10) 40%,
+    rgba(0,0,0,.18) 50%,
+    rgba(0,0,0,.10) 60%,
+    transparent 100%
+  );
+  -webkit-background-clip: text;
+          background-clip: text;
+
+  /* Smooth left→right sweep */
+  background-size: 300% 100%;
+  background-position: 0% 50%;
+  animation: hintLabelShimmer 2.8s linear infinite;
+  opacity: .9; /* gentle; tweak 0.6–1.0 to taste */
+}
+
+@keyframes hintLabelShimmer {
+  0%   { background-position:   0% 50%; }
+  100% { background-position: 300% 50%; }
+}
+
+
+
+
+
+
+
+    
   </style>
 </head>
 <body>
@@ -284,6 +332,16 @@
       layout = words;
     }
 
+    function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+
     function rebuildLayoutSolvedFirst() {
       const top = [];
       const seen = new Set();
@@ -334,7 +392,7 @@
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'tile';
-        btn.textContent = w;
+        btn.innerHTML = `<span class="tile-label" data-text="${escapeHtml(w)}">${escapeHtml(w)}</span>`;
         // HINT: color the hinted tiles
         if (stagedHelp && stagedHelp.hinted && stagedHelp.hinted.has(w)) {
           btn.classList.add('hint', stagedHelp.color);
@@ -502,6 +560,7 @@ function handleHelp() {
   </script>
 </body>
 </html>
+
 
 
 
