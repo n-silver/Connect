@@ -54,11 +54,35 @@
 
 .topbar {
   display: flex;
-  align-items: center;           /* vertically center select against the H1 */
-  justify-content: space-between;/* push to opposite sides */
+  align-items: center;          /* vertically center select vs H1 */
+  justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
+  padding-bottom: 8px;          /* space above the line */
+  margin-bottom: 16px;          /* space below the line */
+  position: relative;           /* enable the full-bleed line */
 }
+
+/* Full-bleed, 1px light grey line that matches tile borders */
+.topbar::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);  /* center relative to viewport */
+  bottom: -0.5px;               /* crisp line */
+  width: 100vw;                 /* full viewport width */
+  height: 1px;
+  background: var(--border);    /* same colour as tile outlines */
+  pointer-events: none;
+}
+
+/* Optional: ensure the heading size looks right (uses proper CSS property) */
+.topbar .title {
+  margin: 10px 0;
+  font-size: 28px;              /* tweak to taste */
+  font-weight: 700;
+  letter-spacing: .2px;
+}
+
 
 /* Optional: tune heading spacing/size */
 .topbar .title { 
@@ -78,16 +102,6 @@
 @media (max-width: 360px) {
   .topbar .date-slot select { min-width: 160px; }
 }
-
-    <div class="topbar">
-  <h1 class="title">Connections</h1>
-  <div class="date-slot">
-    <label for="puzzle-select" class="sr-only">Choose puzzle</label>
-    <select id="puzzle-select" aria-label="Choose puzzle"></select>
-  </div>
-</div>
-
-<hr class="page-divider" aria-hidden="true">
 
 
     
@@ -252,6 +266,7 @@
     <select id="puzzle-select" aria-label="Choose puzzle"></select>
   </div>
 </div>
+
 
 
     <div id="solved" class="solved-list" aria-live="polite"></div>
@@ -588,6 +603,7 @@ function handleHelp() {
   </script>
 </body>
 </html>
+
 
 
 
