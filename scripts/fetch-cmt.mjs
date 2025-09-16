@@ -2,32 +2,34 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-/* ========== CONSTANTS ========== */
+/* ---------- constants ---------- */
 const ROOT = process.cwd();
 const PUZZLES_DIR = path.join(ROOT, 'puzzles');
 
 const MAIN = 'https://capitalizemytitle.com/todays-nyt-connections-answers/';
 const AMP  = 'https://capitalizemytitle.com/todays-nyt-connections-answers/amp/';
 
-/* ========== UTILS ========== */
+/* ---------- utils ---------- */
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 async function fetchText(url) {
-  const u = `${url}${url.includes('?') ? '&' : '?'}ts=${Date.now()}`; // cache-buster
+  // cache-buster; AMP is static too but OK
+  const u = `${url}${url.includes('?') ? '&' : '?'}ts=${Date.now()}`;
   const res = await fetch(u, {
     headers: {
       'Cache-Control': 'no-cache, no-store, max-age=0',
       'Pragma': 'no-cache',
       'Accept': 'text/html,application/xhtml+xml',
       'Accept-Language': 'en-GB,en;q=0.9',
-      'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36'
+      'User-Agent':
+        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36'
     }
   });
   if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText} for ${url}`);
   return await res.text();
 }
 
-function decodeEntities(t='') {
+function decodeEntities(t = '') {
   return t
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
@@ -35,11 +37,11 @@ function decodeEntities(t='') {
     .replace(/&rsquo;|&apos;/g, "'");
 }
 
-function stripTags(html='') {
+function stripTags(html = '') {
   return decodeEntities(html.replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
 }
 
-/* ========== PREVIOUS SNAPSHOT ========== */
+/* ---------- previous snapshot ---------- */
 async function loadPrev() {
   try {
     const raw = await fs.readFile(path.join(PUZZLES_DIR, 'latest.json'), 'utf8');
@@ -59,80 +61,64 @@ function sameWords(cats, prevSet) {
   return true;
 }
 
-/* ========== DATE DETECTION ========== */
+/* ---------- date detection ---------- */
 const MONTHS = {
-  january:0,february:1,march:2,april:3,may:4,june:5,
-  july:6,august:7,september:8,october:9,november:10,december:11
+  january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
+  july: 6, august: 7, september: 8, october: 9, november: 10, december: 11
 };
 
 function mmddyyyyToISO(monthName, dayStr, yearStr) {
   const m = MONTHS[monthName.toLowerCase()];
-  const d = parseInt(dayStr,10);
-  const y = parseInt(yearStr,10);
+  const d = parseInt(dayStr, 10);
+  const y = parseInt(yearStr, 10);
   if (Number.isNaN(m) || !d || !y) return null;
-  return new Date(Date.UTC(y, m, d)).toISOString().slice(0,10);
+  return new Date(Date.UTC(y, m, d)).toISOString().slice(0, 10);
 }
 
 function extractDateFromText(text) {
+  // e.g., "September 16, 2025"
   const re = /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),\s*(\d{4})\b/;
   const m = text.match(re);
   return m ? mmddyyyyToISO(m[1], m[2], m[3]) : null;
 }
 
-/* ========== PARSERS (SECTION-BASED) ========== */
+/* ---------- parsers (section-based) ---------- */
 
-/**
- * Find ALL <h2>…NYT Connections Puzzle Answer…</h2> sections,
- * and slice the HTML for each block up to the next <h2>.
- * Returns an array of { label, blockHtml } in document order.
- */
+/** find all H2s that say “…Connections Puzzle Answer” or “Answers”, slice to next H2 */
 function findAnswerSections(allHtml) {
-  const html = allHtml;
-  const reH2 = /<h2[^>]*>([\s\S]*?NYT\s+Connections\s+Puzzle\s+Answer[\s\S]*?)<\/h2>/gi;
+  // allow Answer or Answers, any extra copy around
+  const reH2 = /<h2[^>]*>([\s\S]*?NYT[\s]+Connections[\s]+Puzzle[\s]+Answers?[\s\S]*?)<\/h2>/gi;
   const sections = [];
+  const html = allHtml;
+  const marks = [];
   let m;
-
-  const indices = [];
   while ((m = reH2.exec(html))) {
-    indices.push({ start: m.index, end: reH2.lastIndex, labelHtml: m[1] });
+    marks.push({ start: m.index, end: reH2.lastIndex, labelHtml: m[1] });
   }
-  if (!indices.length) return [];
-
-  // slice each h2..next h2 (or end)
-  for (let i = 0; i < indices.length; i++) {
-    const startIdx = indices[i].end;
-    const endIdx = (i + 1 < indices.length) ? indices[i+1].start : html.length;
-    const blockHtml = html.slice(startIdx, endIdx);
-    const label = stripTags(indices[i].labelHtml).toLowerCase();
-    sections.push({ label, blockHtml });
+  for (let i = 0; i < marks.length; i++) {
+    const startIdx = marks[i].end;
+    const endIdx = (i + 1 < marks.length) ? marks[i + 1].start : html.length;
+    sections.push({
+      label: stripTags(marks[i].labelHtml).toLowerCase(),
+      blockHtml: html.slice(startIdx, endIdx)
+    });
   }
   return sections;
 }
 
-/**
- * Extract the first 4 "answer boxes" inside a section block.
- * Matches both <span class="answer-text"> and <div class="answer-text">.
- * Returns array of inner HTML blocks (length 4) or null.
- */
+/** strict extractor: first 4 blocks that carry the answer text */
 function extractAnswerBlocks(sectionHtml) {
+  // matches <span class="answer-text">…</span> or <div class="answer-text">…</div>
   const re = /<(?:span|div)[^>]*class=["'][^"']*\banswer-text\b[^"']*["'][^>]*>([\s\S]*?)<\/(?:span|div)>/gi;
-  const found = [];
+  const out = [];
   let m;
-  while ((m = re.exec(sectionHtml)) && found.length < 4) {
-    found.push(m[1]);
-  }
-  return found.length === 4 ? found : null;
+  while ((m = re.exec(sectionHtml)) && out.length < 4) out.push(m[1]);
+  return out.length === 4 ? out : null;
 }
 
-/**
- * Parse one answer block into { title, words }
- * Accepts either:
- *  - <p><strong>TITLE:</strong></p><p>A, B, C, D</p>
- *  - Or 4 words spread on separate lines/paragraphs
- */
 function parseAnswerBlock(innerHtml) {
   const html = decodeEntities(innerHtml);
-  // collect <p> text
+  // collect paragraphs
   const ps = [];
   const reP = /<p[^>]*>([\s\S]*?)<\/p>/gi;
   let m;
@@ -142,16 +128,17 @@ function parseAnswerBlock(innerHtml) {
   }
   if (!ps.length) return null;
 
-  // title is first <p> (strip trailing colon)
+  // title from first <p> (strip trailing colon)
   const title = ps[0].replace(/:\s*$/, '').replace(/[“”"’]+/g, '').trim();
 
-  // words: prefer next line as comma-list
+  // words: prefer next paragraph as comma list
   let words = [];
   if (ps[1]) {
     words = ps[1].split(',').map(s =>
       s.replace(/[“”"’]+/g, '').replace(/[^A-Za-z'’-]/g, '').toUpperCase().trim()
     ).filter(Boolean);
   }
+  // fallback: collect next 3–4 single-word lines
   if (words.length !== 4) {
     const buf = [];
     for (let i = 1; i < ps.length && buf.length < 4; i++) {
@@ -160,142 +147,127 @@ function parseAnswerBlock(innerHtml) {
     }
     if (buf.length === 4) words = buf;
   }
+
   return (title && words.length === 4) ? { title, words } : null;
 }
 
-/**
- * Parse a whole section into categories (4).
- * Returns { categories, sectionText } or null.
- */
-function parseSection(blockHtml) {
-  const blocks = extractAnswerBlocks(blockHtml);
-  if (!blocks) return null;
-  const cats = blocks.map(parseAnswerBlock).filter(Boolean);
-  if (cats.length !== 4) return null;
-  const sectionText = stripTags(blockHtml);
-  return { categories: cats, sectionText };
+/** loose fallback: <p><strong>Title:</strong></p><p>A, B, C, D</p> pairs anywhere in the section */
+function parseFromHtmlLoose(sectionHtml) {
+  const section = sectionHtml || '';
+  const re = /<p[^>]*>\s*<strong[^>]*>([\s\S]*?)<\/strong>\s*<\/p>\s*<p[^>]*>([\s\S]*?)<\/p>/gi;
+  const cats = [];
+  let m;
+  while ((m = re.exec(section)) && cats.length < 4) {
+    const rawTitle = decodeEntities(m[1]).replace(/:\s*$/, '').replace(/[“”"’]+/g, '').trim();
+    const wordsLine = decodeEntities(m[2]);
+    let words = wordsLine.split(',').map(s =>
+      s.replace(/[“”"’]+/g, '').replace(/[^A-Za-z'’-]/g, '').toUpperCase().trim()
+    ).filter(Boolean);
+    if (rawTitle && words.length >= 4) cats.push({ title: rawTitle, words: words.slice(0, 4) });
+  }
+  return cats.length === 4 ? cats : null;
 }
 
-/**
- * Parse the entire page into multiple sections and decide which one to use.
- * Preference order:
- *   1) a section whose H2 label includes "today"
- *   2) otherwise, the first section whose words != prevSet
- *   3) otherwise, return null (stale; don’t write)
- */
-function parsePageBySections(allHtml, prevSet) {
-  const sections = findAnswerSections(allHtml);
-  if (!sections.length) return null;
-
-  // Try "today" labeled section first
-  const todayIdx = sections.findIndex(s => /\btoday'?s\b/i.test(s.label));
-  const candidates = [];
-  if (todayIdx >= 0) candidates.push(sections[todayIdx], ...sections.filter((_,i)=>i!==todayIdx));
-  else candidates.push(...sections);
-
-  for (const s of candidates) {
-    const parsed = parseSection(s.blockHtml);
-    if (!parsed) continue;
-
-    // If label says "today", accept immediately
-    if (/\btoday'?s\b/i.test(s.label)) {
-      return { categories: parsed.categories, sectionText: parsed.sectionText, label: s.label };
-    }
-
-    // Otherwise, prefer the first that differs from previous
-    if (!sameWords(parsed.categories, prevSet)) {
-      return { categories: parsed.categories, sectionText: parsed.sectionText, label: s.label };
-    }
+/** parse a section block into categories + text */
+function parseSection(blockHtml) {
+  let cats = null;
+  const blocks = extractAnswerBlocks(blockHtml);
+  if (blocks) {
+    const parsed = blocks.map(parseAnswerBlock).filter(Boolean);
+    if (parsed.length === 4) cats = parsed;
   }
+  if (!cats) {
+    const loose = parseFromHtmlLoose(blockHtml);
+    if (loose) cats = loose;
+  }
+  if (!cats) return null;
+  return { categories: cats, sectionText: stripTags(blockHtml) };
+}
 
-  // Everything parsed equals previous -> treat as stale
+/** choose a section:
+ *  1) newest explicit date in section text wins
+ *  2) else any section whose words != previous
+ *  3) else null (stale)
+ */
+function chooseBestSection(sections, prevSet) {
+  const parsed = [];
+  for (const s of sections) {
+    const p = parseSection(s.blockHtml);
+    if (!p) continue;
+    const dateInSection = extractDateFromText(p.sectionText);
+    parsed.push({ cats: p.categories, text: p.sectionText, date: dateInSection, label: s.label });
+  }
+  if (!parsed.length) return null;
+
+  // 1) pick section with the latest date
+  const dated = parsed.filter(x => !!x.date)
+    .sort((a, b) => (a.date < b.date ? 1 : -1));
+  if (dated.length) return dated[0];
+
+  // 2) first that differs from previous words
+  const diff = parsed.find(x => !sameWords(x.cats, prevSet));
+  if (diff) return diff;
+
+  // 3) stale
   return null;
 }
 
-/* ========== DATE PICKING for CHOSEN SECTION ========== */
-function inferDateForChosen({ sectionText, pageHtml, prevDate, isNewWords }) {
-  // Prefer explicit calendar date found within the chosen section text
-  const fromSection = extractDateFromText(sectionText || '');
-  if (fromSection) return fromSection;
-
-  // Try whole page (sometimes date sits outside the immediate section)
-  const wholeText = stripTags(pageHtml || '');
-  const fromWhole = extractDateFromText(wholeText);
-  if (fromWhole) return fromWhole;
-
-  // If words are new, infer prev+1; else leave as prev (no writing if stale anyway)
-  if (isNewWords && prevDate) {
-    const d = new Date(prevDate);
-    d.setUTCDate(d.getUTCDate() + 1);
-    return d.toISOString().slice(0,10);
-  }
-  if (isNewWords) {
-    return new Date().toISOString().slice(0,10);
-  }
-  return prevDate || new Date().toISOString().slice(0,10);
-}
-
-/* ========== FETCH + DECIDE ========== */
+/* ---------- fetch + decide ---------- */
 async function fetchPuzzleFresh() {
   const prev = await loadPrev();
 
   const sources = [
     { name: 'MAIN', url: MAIN },
-    { name: 'AMP',  url: AMP  },
+    { name: 'AMP',  url: AMP  }
   ];
 
-  let chosen = null;
-  let chosenSource = null;
-  let lastHtml = '';
+  let best = null;
+  let bestSource = null;
 
-  // Two passes with a small wait to dodge slow template rebuilds
-  for (let pass = 0; pass < 2 && !chosen; pass++) {
+  for (let pass = 0; pass < 2 && !best; pass++) {
     for (const s of sources) {
       try {
         const html = await fetchText(s.url);
-        lastHtml = html;
-        const parsed = parsePageBySections(html, prev.wordSet);
-        if (parsed) {
-          const isNew = !sameWords(parsed.categories, prev.wordSet);
-          const date = inferDateForChosen({
-            sectionText: parsed.sectionText,
-            pageHtml: html,
-            prevDate: prev.date,
-            isNewWords: isNew
-          });
-          chosen = { date, categories: parsed.categories };
-          chosenSource = s.name;
-          if (isNew) break; // stop early on a fresh set
-        } else {
-          // parsed == null => stale (all sections equal prev)
-          // try next source (or next pass)
+        const sections = findAnswerSections(html);
+        if (!sections.length) { console.log(`[skip] ${s.name}: no sections`); continue; }
+
+        const chosen = chooseBestSection(sections, prev.wordSet);
+        if (!chosen) { console.log(`[stale] ${s.name}: all sections match previous`); continue; }
+
+        const isNew = !sameWords(chosen.cats, prev.wordSet);
+        const date = chosen.date
+          ? chosen.date
+          : (isNew
+              ? (prev.date
+                  ? new Date(new Date(prev.date).getTime() + 86400000).toISOString().slice(0, 10)
+                  : new Date().toISOString().slice(0, 10))
+              : prev.date || new Date().toISOString().slice(0, 10));
+
+        if (isNew) {
+          best = { date, categories: chosen.cats };
+          bestSource = s.name;
+          break; // fresh found
         }
+        // else continue trying other sources/pass
       } catch (e) {
         console.log(`[skip] ${s.name}: ${e.message}`);
       }
     }
-    if (!chosen) {
-      console.log('[info] no differing section found; waiting 8s then retrying…');
+    if (!best && pass === 0) {
+      console.log('[info] all looked stale; waiting 8s then retrying…');
       await sleep(8000);
     }
   }
 
-  if (!chosen) {
-    return { status: 'stale', reason: 'All parsed sections matched previous or no sections found' };
-  }
+  if (!best) return { status: 'stale', reason: 'No differing section found' };
 
-  const isNew = !sameWords(chosen.categories, prev.wordSet);
-  if (!isNew) {
-    return { status: 'stale', reason: 'Chosen section still equals previous (stale at source)' };
-  }
-
-  console.log(`[source] ${chosenSource}`);
-  console.log(`[date]   ${chosen.date}`);
-  console.log(`[titles] ${chosen.categories.map(c => c.title).join(' | ')}`);
-  return { status: 'fresh', puzzle: chosen };
+  console.log(`[source] ${bestSource}`);
+  console.log(`[date]   ${best.date}`);
+  console.log(`[titles] ${best.categories.map(c => c.title).join(' | ')}`);
+  return { status: 'fresh', puzzle: best };
 }
 
-/* ========== WRITES ========== */
+/* ---------- writes ---------- */
 async function writeFiles(puzzle) {
   await fs.mkdir(PUZZLES_DIR, { recursive: true });
   await fs.writeFile(path.join(PUZZLES_DIR, `${puzzle.date}.json`), JSON.stringify(puzzle, null, 2));
@@ -309,18 +281,18 @@ async function writeFiles(puzzle) {
     if (Array.isArray(arr)) manifest = arr;
   } catch {}
   manifest = [puzzle.date, ...manifest.filter(d => d !== puzzle.date)]
-    .sort((a,b) => (a < b ? 1 : -1));
+    .sort((a, b) => (a < b ? 1 : -1));
   await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2));
 }
 
-/* ========== CLI ========== */
+/* ---------- CLI ---------- */
 async function main() {
   const DRY = process.argv.includes('--dry-run');
   const { status, puzzle, reason } = await fetchPuzzleFresh();
 
   if (status === 'stale') {
     console.log(`[OK] No new puzzle yet; skipping write. (${reason})`);
-    return; // exit 0 (allows commit step to say "No changes")
+    return; // exit 0
   }
 
   if (DRY) {
@@ -334,4 +306,3 @@ async function main() {
 }
 
 main().catch(err => { console.error(err); process.exit(1); });
-
