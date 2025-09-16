@@ -49,7 +49,7 @@
 /* Optional: tune heading spacing/size */
 .topbar .title { 
   margin: 15px 0 30px; 
-  font-size: 40px;               /* adjust to taste */
+  font-size: 32px;               /* adjust to taste */
   font-weight: 700; 
   letter-spacing: .2px; 
 }
@@ -64,6 +64,17 @@
 @media (max-width: 360px) {
   .topbar .date-slot select { min-width: 160px; }
 }
+
+    <div class="topbar">
+  <h1 class="title">Connections</h1>
+  <div class="date-slot">
+    <label for="puzzle-select" class="sr-only">Choose puzzle</label>
+    <select id="puzzle-select" aria-label="Choose puzzle"></select>
+  </div>
+</div>
+
+<hr class="page-divider" aria-hidden="true">
+
 
     
     /* Grid & tiles */
@@ -211,6 +222,22 @@
     @media (max-width: 360px) {
       :root { --tile-font: 13px; --tile-h: 78px; --heading-size: clamp(100px, 6vw, 100px);}
     }
+
+/* Full-bleed divider under the top bar */
+.page-divider {
+  border: 0;
+  height: 1px;
+  background: var(--border);        /* same as tile outline */
+  margin: 8px 0 16px;
+
+  /* full width across the viewport, even inside a centered .wrap */
+  width: 100vw;
+  max-width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+}
+
+    
   </style>
 </head>
 <body>
@@ -559,6 +586,7 @@ function handleHelp() {
   </script>
 </body>
 </html>
+
 
 
 
