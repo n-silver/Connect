@@ -19,6 +19,20 @@
       --tile-h: 70px;        /* tile height; keep 4 columns across devices */
     }
 
+/* Full-bleed divider under the top bar */
+.page-divider {
+  border: 0;
+  height: 1px;
+  background: var(--border);        /* same as tile outline */
+  margin: 8px 0 16px;
+
+  /* full width across the viewport, even inside a centered .wrap */
+  width: 100vw;
+  max-width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+}
+    
     html, body { height:100%; }
     *, *::before, *::after { -webkit-text-fill-color: currentColor; box-sizing:border-box; }
     body { margin:0; font-family:'Montserrat', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:var(--bg); color:var(--fg); }
@@ -223,19 +237,7 @@
       :root { --tile-font: 13px; --tile-h: 78px; --heading-size: clamp(100px, 6vw, 100px);}
     }
 
-/* Full-bleed divider under the top bar */
-.page-divider {
-  border: 0;
-  height: 1px;
-  background: var(--border);        /* same as tile outline */
-  margin: 8px 0 16px;
 
-  /* full width across the viewport, even inside a centered .wrap */
-  width: 100vw;
-  max-width: 100vw;
-  margin-left: calc(50% - 50vw);
-  margin-right: calc(50% - 50vw);
-}
 
     
   </style>
@@ -586,6 +588,7 @@ function handleHelp() {
   </script>
 </body>
 </html>
+
 
 
 
