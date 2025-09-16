@@ -13,8 +13,7 @@ const AMP  = 'https://capitalizemytitle.com/todays-nyt-connections-answers/amp/'
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 async function fetchText(url) {
-  // cache-buster; AMP is static too but OK
-  const u = `${url}${url.includes('?') ? '&' : '?'}ts=${Date.now()}`;
+  const u = `${url}${url.includes('?') ? '&' : '?'}ts=${Date.now()}`; // cache-buster
   const res = await fetch(u, {
     headers: {
       'Cache-Control': 'no-cache, no-store, max-age=0',
@@ -41,24 +40,52 @@ function stripTags(html = '') {
   return decodeEntities(html.replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
 }
 
-/* ---------- previous snapshot ---------- */
-async function loadPrev() {
+/* ---------- load recent (last 2 puzzles) ---------- */
+async function loadRecent(n = 2) {
+  // manifest.json is an array of ISO dates newest-first
+  const manifestPath = path.join(PUZZLES_DIR, 'manifest.json');
+  let dates = [];
   try {
-    const raw = await fs.readFile(path.join(PUZZLES_DIR, 'latest.json'), 'utf8');
-    const j = JSON.parse(raw);
-    const words = new Set(j.categories?.flatMap(c => c.words) || []);
-    return { date: j.date || null, wordSet: words };
+    const raw = await fs.readFile(manifestPath, 'utf8');
+    const arr = JSON.parse(raw);
+    if (Array.isArray(arr)) dates = arr.slice(0, n);
   } catch {
-    return { date: null, wordSet: null };
+    // fallback: try latest.json only
+    try {
+      const latest = JSON.parse(await fs.readFile(path.join(PUZZLES_DIR, 'latest.json'), 'utf8'));
+      if (latest?.date) dates = [latest.date];
+    } catch {}
   }
+
+  const recents = [];
+  for (const d of dates) {
+    try {
+      const j = JSON.parse(await fs.readFile(path.join(PUZZLES_DIR, `${d}.json`), 'utf8'));
+      const set = new Set(j.categories?.flatMap(c => c.words) || []);
+      recents.push({ date: d, set });
+    } catch {}
+  }
+  // ensure at least the latest.json is present in recents
+  if (!recents.length) {
+    try {
+      const latest = JSON.parse(await fs.readFile(path.join(PUZZLES_DIR, 'latest.json'), 'utf8'));
+      const set = new Set(latest.categories?.flatMap(c => c.words) || []);
+      recents.push({ date: latest.date || null, set });
+    } catch {}
+  }
+  return recents; // array of {date, set}
 }
 
-function sameWords(cats, prevSet) {
-  if (!cats || !prevSet) return false;
+function equalsSet(cats, set) {
+  if (!cats || !set) return false;
   const cur = new Set(cats.flatMap(c => c.words));
-  if (cur.size !== prevSet.size) return false;
-  for (const w of cur) if (!prevSet.has(w)) return false;
+  if (cur.size !== set.size) return false;
+  for (const w of cur) if (!set.has(w)) return false;
   return true;
+}
+
+function equalsAnyRecent(cats, recents) {
+  return recents.some(r => equalsSet(cats, r.set));
 }
 
 /* ---------- date detection ---------- */
@@ -86,7 +113,6 @@ function extractDateFromText(text) {
 
 /** find all H2s that say “…Connections Puzzle Answer” or “Answers”, slice to next H2 */
 function findAnswerSections(allHtml) {
-  // allow Answer or Answers, any extra copy around
   const reH2 = /<h2[^>]*>([\s\S]*?NYT[\s]+Connections[\s]+Puzzle[\s]+Answers?[\s\S]*?)<\/h2>/gi;
   const sections = [];
   const html = allHtml;
@@ -184,12 +210,13 @@ function parseSection(blockHtml) {
   return { categories: cats, sectionText: stripTags(blockHtml) };
 }
 
-/** choose a section:
- *  1) newest explicit date in section text wins
- *  2) else any section whose words != previous
- *  3) else null (stale)
+/** choose a section that is NOT a duplicate of the last 2 puzzles
+ *  Preference:
+ *   1) Among non-duplicates, pick the one with the newest explicit date in its text
+ *   2) If none have dates, pick the first non-duplicate in page order
+ *   3) If all are duplicates, return null (stale)
  */
-function chooseBestSection(sections, prevSet) {
+function chooseBestSection(sections, recent) {
   const parsed = [];
   for (const s of sections) {
     const p = parseSection(s.blockHtml);
@@ -199,72 +226,67 @@ function chooseBestSection(sections, prevSet) {
   }
   if (!parsed.length) return null;
 
-  // 1) pick section with the latest date
-  const dated = parsed.filter(x => !!x.date)
-    .sort((a, b) => (a.date < b.date ? 1 : -1));
+  // filter out duplicates of recent sets (last 2)
+  const nonDup = parsed.filter(x => !equalsAnyRecent(x.cats, recent));
+  if (!nonDup.length) return null;
+
+  // prefer the one with the newest explicit date
+  const dated = nonDup.filter(x => !!x.date).sort((a, b) => (a.date < b.date ? 1 : -1));
   if (dated.length) return dated[0];
 
-  // 2) first that differs from previous words
-  const diff = parsed.find(x => !sameWords(x.cats, prevSet));
-  if (diff) return diff;
-
-  // 3) stale
-  return null;
+  // otherwise first non-duplicate in document order
+  return nonDup[0];
 }
 
 /* ---------- fetch + decide ---------- */
 async function fetchPuzzleFresh() {
-  const prev = await loadPrev();
+  const recent = await loadRecent(2); // last two puzzles
+  const prevDate = recent.length ? recent[0].date : null; // latest date (if any)
 
   const sources = [
     { name: 'MAIN', url: MAIN },
     { name: 'AMP',  url: AMP  }
   ];
 
-  let best = null;
-  let bestSource = null;
-
-  for (let pass = 0; pass < 2 && !best; pass++) {
+  for (let pass = 0; pass < 2; pass++) {
     for (const s of sources) {
       try {
         const html = await fetchText(s.url);
         const sections = findAnswerSections(html);
         if (!sections.length) { console.log(`[skip] ${s.name}: no sections`); continue; }
 
-        const chosen = chooseBestSection(sections, prev.wordSet);
-        if (!chosen) { console.log(`[stale] ${s.name}: all sections match previous`); continue; }
+        const chosen = chooseBestSection(sections, recent);
+        if (!chosen) { console.log(`[stale] ${s.name}: all sections duplicate recent`); continue; }
 
-        const isNew = !sameWords(chosen.cats, prev.wordSet);
-        const date = chosen.date
-          ? chosen.date
-          : (isNew
-              ? (prev.date
-                  ? new Date(new Date(prev.date).getTime() + 86400000).toISOString().slice(0, 10)
-                  : new Date().toISOString().slice(0, 10))
-              : prev.date || new Date().toISOString().slice(0, 10));
-
-        if (isNew) {
-          best = { date, categories: chosen.cats };
-          bestSource = s.name;
-          break; // fresh found
+        // Decide date
+        let date = chosen.date;
+        if (!date) {
+          // infer only for new content (we already filtered dupes)
+          if (prevDate) {
+            const d = new Date(prevDate);
+            d.setUTCDate(d.getUTCDate() + 1);
+            date = d.toISOString().slice(0, 10);
+          } else {
+            date = new Date().toISOString().slice(0, 10);
+          }
         }
-        // else continue trying other sources/pass
+
+        const puzzle = { date, categories: chosen.cats };
+        console.log(`[source] ${s.name}`);
+        console.log(`[date]   ${date}`);
+        console.log(`[titles] ${puzzle.categories.map(c => c.title).join(' | ')}`);
+        return { status: 'fresh', puzzle };
       } catch (e) {
         console.log(`[skip] ${s.name}: ${e.message}`);
       }
     }
-    if (!best && pass === 0) {
-      console.log('[info] all looked stale; waiting 8s then retrying…');
+    if (pass === 0) {
+      console.log('[info] all sources duplicate recent; waiting 8s then retrying…');
       await sleep(8000);
     }
   }
 
-  if (!best) return { status: 'stale', reason: 'No differing section found' };
-
-  console.log(`[source] ${bestSource}`);
-  console.log(`[date]   ${best.date}`);
-  console.log(`[titles] ${best.categories.map(c => c.title).join(' | ')}`);
-  return { status: 'fresh', puzzle: best };
+  return { status: 'stale', reason: 'No non-duplicate section found' };
 }
 
 /* ---------- writes ---------- */
