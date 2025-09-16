@@ -10,7 +10,7 @@ const todayISO = new Date().toISOString().slice(0, 10);
 const MAIN = 'https://capitalizemytitle.com/todays-nyt-connections-answers/';
 const AMP  = 'https://capitalizemytitle.com/todays-nyt-connections-answers/amp/';
 // Remote fetcher that often bypasses regional CDN caches:
-const JINA = (u) => `https://r.jina.ai/http/${u.replace(/^https?:\/\//,'')}`;
+const JINA = (u) => `https://r.jina.ai/http/${u}`;  // e.g. JINA('https://capitalizemytitle.com/…')
 
 // ---------- utils ----------
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
