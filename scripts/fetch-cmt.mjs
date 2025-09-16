@@ -2,16 +2,16 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-// ---------- constants ----------
+/* ---------------- constants ---------------- */
 const ROOT = process.cwd();
 const PUZZLES_DIR = path.join(ROOT, 'puzzles');
 
 const MAIN = 'https://capitalizemytitle.com/todays-nyt-connections-answers/';
 const AMP  = 'https://capitalizemytitle.com/todays-nyt-connections-answers/amp/';
-// Remote fetch (bypasses some regional caches). Must include scheme!
+// Jina mirror helper: MUST include scheme
 const JINA = (u) => `https://r.jina.ai/http/${u}`;
 
-// ---------- utils ----------
+/* ---------------- utils ---------------- */
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 async function fetchText(url) {
@@ -38,7 +38,7 @@ function decodeEntities(t='') {
     .replace(/&rsquo;|&apos;/g, "'");
 }
 
-// ---------- read previous ----------
+/* ---------------- previous snapshot ---------------- */
 async function loadPrev() {
   try {
     const raw = await fs.readFile(path.join(PUZZLES_DIR, 'latest.json'), 'utf8');
@@ -50,22 +50,22 @@ async function loadPrev() {
   }
 }
 
-function sameWords(cur, prevSet) {
-  if (!cur || !prevSet) return false;
-  const curSet = new Set(cur.categories.flatMap(c => c.words));
-  if (curSet.size !== prevSet.size) return false;
-  for (const w of curSet) if (!prevSet.has(w)) return false;
+function sameWords(curCats, prevSet) {
+  if (!curCats || !prevSet) return false;
+  const cur = new Set(curCats.flatMap(c => c.words));
+  if (cur.size !== prevSet.size) return false;
+  for (const w of cur) if (!prevSet.has(w)) return false;
   return true;
 }
 
-// ---------- parsing ----------
+/* ---------------- parsing ---------------- */
 function sliceFromHeading(html) {
   const re = /<h2[^>]*>\s*Today'?s NYT Connections Puzzle Answer\s*<\/h2>/i;
   const i = html.search(re);
   return i >= 0 ? html.slice(i) : null;
 }
 
-// first four .answer-text blocks after heading
+// first four .answer-text spans after the heading
 function extractAnswerSpans(sectionHtml) {
   if (!sectionHtml) return null;
   const re = /<span[^>]*class=["'][^"']*\banswer-text\b[^"']*["'][^>]*>([\s\S]*?)<\/span>/gi;
@@ -114,10 +114,10 @@ function parseFromHtml(html) {
   const spans = extractAnswerSpans(section);
   if (!spans) return null;
   const cats = spans.map(parseAnswerSpan).filter(Boolean);
-  return (cats.length === 4) ? { categories: cats } : null;
+  return (cats.length === 4) ? cats : null;
 }
 
-// For r.jina.ai (text only)
+// For r.jina.ai (returns extracted text)
 function parseFromText(bigText) {
   const anchor = /today'?s nyt connections puzzle answer/i;
   const idx = bigText.search(anchor);
@@ -136,23 +136,18 @@ function parseFromText(bigText) {
       }
     }
   }
-  return (groups.length === 4) ? { categories: groups } : null;
+  return (groups.length === 4) ? groups : null;
 }
 
-// ---------- date detection ----------
-const MONTHS = {
-  january:0,february:1,march:2,april:3,may:4,june:5,
-  july:6,august:7,september:8,october:9,november:10,december:11
-};
+/* ---------------- date detection ---------------- */
+const MONTHS = { january:0,february:1,march:2,april:3,may:4,june:5,july:6,august:7,september:8,october:9,november:10,december:11 };
 
 function mmddyyyyToISO(monthName, dayStr, yearStr) {
   const m = MONTHS[monthName.toLowerCase()];
   const d = parseInt(dayStr,10);
   const y = parseInt(yearStr,10);
   if (Number.isNaN(m) || !d || !y) return null;
-  // Treat as calendar date (no timezone): construct UTC date for the day
-  const iso = new Date(Date.UTC(y, m, d)).toISOString().slice(0,10);
-  return iso;
+  return new Date(Date.UTC(y, m, d)).toISOString().slice(0,10);
 }
 
 function extractDateFromText(text) {
@@ -171,14 +166,10 @@ function extractDateFromJsonLd(html) {
       for (const obj of arr) {
         if (obj && typeof obj === 'object') {
           const dt = obj.datePublished || obj.dateModified;
-          if (typeof dt === 'string') {
-            // Use the calendar day of that timestamp in its own timezone assumption
-            const iso = new Date(dt).toISOString().slice(0,10);
-            return iso;
-          }
+          if (typeof dt === 'string') return new Date(dt).toISOString().slice(0,10);
         }
       }
-    } catch (_) {}
+    } catch {}
   }
   return null;
 }
@@ -186,97 +177,90 @@ function extractDateFromJsonLd(html) {
 function extractDateFromMeta(html) {
   const re = /<meta[^>]+(?:property|name)=["']article:(?:published_time|modified_time)["'][^>]+content=["']([^"']+)["'][^>]*>/i;
   const m = html.match(re);
-  if (m) {
-    try { return new Date(m[1]).toISOString().slice(0,10); } catch { return null; }
-  }
-  return null;
+  return m ? new Date(m[1]).toISOString().slice(0,10) : null;
 }
 
-function pickPuzzleDate({ html, text, prevDate }) {
-  // Prefer explicit “September 15, 2025” style in page text (stable calendar date)
+function inferDate({ html, text, prevDate, wordsAreDifferent }) {
+  // 1) explicit calendar text
   const fromText = text ? extractDateFromText(text) : null;
   if (fromText) return fromText;
 
-  // Then structured data/meta timestamps (UTC date part)
-  const fromJsonLd = extractDateFromJsonLd(html);
+  // 2) structured data/meta timestamps
+  const fromJsonLd = html ? extractDateFromJsonLd(html) : null;
   if (fromJsonLd) return fromJsonLd;
 
-  const fromMeta = extractDateFromMeta(html);
+  const fromMeta = html ? extractDateFromMeta(html) : null;
   if (fromMeta) return fromMeta;
 
-  // Fallback: if words differ from previous, advance previous date by 1
-  if (prevDate) {
+  // 3) ONLY if words are new, infer prev+1; never for stale content
+  if (wordsAreDifferent && prevDate) {
     const d = new Date(prevDate);
     d.setUTCDate(d.getUTCDate() + 1);
     return d.toISOString().slice(0,10);
   }
 
-  // Last resort: stamp with UTC "today"
-  return new Date().toISOString().slice(0,10);
+  // 4) last resort: UTC "today" (used only for fresh content w/o any date signal)
+  if (wordsAreDifferent) return new Date().toISOString().slice(0,10);
+
+  // If stale, return prevDate (prevents wrong stamping)
+  return prevDate || new Date().toISOString().slice(0,10);
 }
 
-// ---------- fetch + parse with multi-source + staleness + dating ----------
+/* ---------------- fetch orchestration ---------------- */
 async function fetchPuzzleFresh() {
   const prev = await loadPrev();
 
   const tries = [
-    { name: 'MAIN',      url: MAIN,       parser: parseFromHtml, isText: false },
-    { name: 'AMP',       url: AMP,        parser: parseFromHtml, isText: false },
-    { name: 'JINA MAIN', url: JINA(MAIN), parser: parseFromText, isText: true  },
-    { name: 'JINA AMP',  url: JINA(AMP),  parser: parseFromText, isText: true  },
+    { name: 'MAIN',               url: MAIN,                           parser: parseFromHtml, isText: false },
+    { name: 'AMP',                url: AMP,                            parser: parseFromHtml, isText: false },
+    { name: 'JINA MAIN (https)',  url: JINA(MAIN),                     parser: parseFromText, isText: true  },
+    { name: 'JINA AMP (https)',   url: JINA(AMP),                      parser: parseFromText, isText: true  },
+    { name: 'JINA MAIN (http)',   url: JINA(MAIN.replace('https://','http://')), parser: parseFromText, isText: true  },
+    { name: 'JINA AMP (http)',    url: JINA(AMP.replace('https://','http://')),  parser: parseFromText, isText: true  },
   ];
 
-  let lastParsed = null;
-  let lastHtml = '';
-  let lastText = '';
-
+  // First pass + short retry pass
   for (let pass = 0; pass < 2; pass++) {
     for (const t of tries) {
       try {
         const body = await fetchText(t.url);
-        const parsed = t.parser(body);
-        if (!parsed) { console.log(`[skip] ${t.name}: no parse`); continue; }
+        const cats = t.parser(body);
+        if (!cats) { console.log(`[skip] ${t.name}: no parse`); continue; }
 
-        // Decide date from page content (use HTML for date extraction; JINA gives text only)
         const htmlForDate = t.isText ? '' : body;
         const textForDate = t.isText ? body : '';
-        const date = pickPuzzleDate({ html: htmlForDate, text: textForDate, prevDate: prev.date });
+        const isNew = !sameWords(cats, prev.wordSet);
+        const date = inferDate({
+          html: htmlForDate,
+          text: textForDate,
+          prevDate: prev.date,
+          wordsAreDifferent: isNew
+        });
 
-        const candidate = { date, categories: parsed.categories };
-        lastParsed = candidate;
-        lastHtml = htmlForDate || lastHtml;
-        lastText = textForDate || lastText;
-
-        // If this is not the same words as yesterday, accept it
-        if (!sameWords(candidate, prev.wordSet)) {
+        if (isNew) {
+          const puzzle = { date, categories: cats };
           console.log(`[source] ${t.name}`);
           console.log(`[date]   ${date}`);
-          console.log(`[titles] ${candidate.categories.map(c => c.title).join(' | ')}`);
-          return candidate;
+          console.log(`[titles] ${puzzle.categories.map(c => c.title).join(' | ')}`);
+          return { status: 'fresh', puzzle };
+        } else {
+          console.log(`[stale] ${t.name} matches previous; trying next…`);
         }
-
-        console.log(`[stale] ${t.name} looks identical to previous; trying next source…`);
       } catch (e) {
         console.log(`[skip] ${t.name}: ${e.message}`);
       }
     }
-
     if (pass === 0) {
-      console.log('[info] all sources looked stale; waiting 6s and retrying…');
-      await sleep(6000);
+      console.log('[info] all sources stale; waiting 8s then retrying…');
+      await sleep(8000);
     }
   }
 
-  // If everything looked stale, return the best we parsed (don’t hard fail)
-  if (lastParsed) {
-    console.log('[warn] returning content that matches previous (likely CDN lag)');
-    console.log(`[date] ${lastParsed.date}`);
-    return lastParsed;
-  }
-  throw new Error('Could not parse 4 categories from any source.');
+  // Nothing new found
+  return { status: 'stale', reason: 'All sources matched previous (CDN lag or not updated yet)' };
 }
 
-// ---------- file writes ----------
+/* ---------------- writes ---------------- */
 async function writeFiles(puzzle) {
   await fs.mkdir(PUZZLES_DIR, { recursive: true });
   await fs.writeFile(path.join(PUZZLES_DIR, `${puzzle.date}.json`), JSON.stringify(puzzle, null, 2));
@@ -295,10 +279,15 @@ async function writeFiles(puzzle) {
   await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2));
 }
 
-// ---------- CLI ----------
+/* ---------------- CLI ---------------- */
 async function main() {
   const DRY = process.argv.includes('--dry-run');
-  const puzzle = await fetchPuzzleFresh();
+  const { status, puzzle, reason } = await fetchPuzzleFresh();
+
+  if (status === 'stale') {
+    console.log(`[OK] No new puzzle yet; skipping write. (${reason})`);
+    return; // exit 0, lets the commit step say "No changes"
+  }
 
   if (DRY) {
     console.log('[DRY RUN] Parsed puzzle:');
