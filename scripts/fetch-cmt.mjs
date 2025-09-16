@@ -2,21 +2,21 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
+// ---------- constants ----------
 const ROOT = process.cwd();
 const PUZZLES_DIR = path.join(ROOT, 'puzzles');
-const todayISO = new Date().toISOString().slice(0, 10);
 
-// Sources (ordered by freshness likelihood)
 const MAIN = 'https://capitalizemytitle.com/todays-nyt-connections-answers/';
 const AMP  = 'https://capitalizemytitle.com/todays-nyt-connections-answers/amp/';
-// Remote fetcher that often bypasses regional CDN caches:
-const JINA = (u) => `https://r.jina.ai/http/${u}`;  // e.g. JINA('https://capitalizemytitle.com/…')
+// Remote fetch (bypasses some regional caches). Must include scheme!
+const JINA = (u) => `https://r.jina.ai/http/${u}`;
 
 // ---------- utils ----------
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 async function fetchText(url) {
-  const u = `${url}?ts=${Date.now()}`; // cache-buster
+  const addTs = !url.startsWith('https://r.jina.ai/http/');
+  const u = addTs ? `${url}${url.includes('?') ? '&' : '?'}ts=${Date.now()}` : url;
   const res = await fetch(u, {
     headers: {
       'Cache-Control': 'no-cache, no-store, max-age=0',
@@ -38,26 +38,43 @@ function decodeEntities(t='') {
     .replace(/&rsquo;|&apos;/g, "'");
 }
 
-// ---------- parsing (HTML-first, then text fallback) ----------
+// ---------- read previous ----------
+async function loadPrev() {
+  try {
+    const raw = await fs.readFile(path.join(PUZZLES_DIR, 'latest.json'), 'utf8');
+    const j = JSON.parse(raw);
+    const words = new Set(j.categories?.flatMap(c => c.words) || []);
+    return { date: j.date || null, wordSet: words };
+  } catch {
+    return { date: null, wordSet: null };
+  }
+}
+
+function sameWords(cur, prevSet) {
+  if (!cur || !prevSet) return false;
+  const curSet = new Set(cur.categories.flatMap(c => c.words));
+  if (curSet.size !== prevSet.size) return false;
+  for (const w of curSet) if (!prevSet.has(w)) return false;
+  return true;
+}
+
+// ---------- parsing ----------
 function sliceFromHeading(html) {
   const re = /<h2[^>]*>\s*Today'?s NYT Connections Puzzle Answer\s*<\/h2>/i;
   const i = html.search(re);
   return i >= 0 ? html.slice(i) : null;
 }
 
-// Find first four <span class="answer-text">...</span> blocks after the heading
+// first four .answer-text blocks after heading
 function extractAnswerSpans(sectionHtml) {
   if (!sectionHtml) return null;
   const re = /<span[^>]*class=["'][^"']*\banswer-text\b[^"']*["'][^>]*>([\s\S]*?)<\/span>/gi;
   const blocks = [];
   let m;
-  while ((m = re.exec(sectionHtml)) && blocks.length < 4) {
-    blocks.push(m[1]);
-  }
+  while ((m = re.exec(sectionHtml)) && blocks.length < 4) blocks.push(m[1]);
   return blocks.length === 4 ? blocks : null;
 }
 
-// Parse one answer span into {title, words}
 function parseAnswerSpan(innerHtml) {
   if (!innerHtml) return null;
   const html = decodeEntities(innerHtml);
@@ -69,8 +86,10 @@ function parseAnswerSpan(innerHtml) {
     if (txt) ps.push(txt);
   }
   if (!ps.length) return null;
+
   const rawTitle = ps[0].replace(/:\s*$/, '');
   const title = rawTitle.replace(/[“”"’]+/g, '').trim();
+
   let words = [];
   if (ps[1]) {
     words = ps[1].split(',').map(s =>
@@ -85,6 +104,7 @@ function parseAnswerSpan(innerHtml) {
     }
     if (buf.length === 4) words = buf;
   }
+
   return (title && words.length === 4) ? { title, words } : null;
 }
 
@@ -94,10 +114,10 @@ function parseFromHtml(html) {
   const spans = extractAnswerSpans(section);
   if (!spans) return null;
   const cats = spans.map(parseAnswerSpan).filter(Boolean);
-  return (cats.length === 4) ? { date: todayISO, categories: cats } : null;
+  return (cats.length === 4) ? { categories: cats } : null;
 }
 
-// Text fallback (for r.jina.ai which returns extracted text)
+// For r.jina.ai (text only)
 function parseFromText(bigText) {
   const anchor = /today'?s nyt connections puzzle answer/i;
   const idx = bigText.search(anchor);
@@ -106,78 +126,152 @@ function parseFromText(bigText) {
 
   const groups = [];
   for (let i = 0; i < lines.length && groups.length < 4; i++) {
-    // detect a title line ending with colon and then a comma list
     if (/[:：]\s*$/.test(lines[i]) && /[A-Za-z]/.test(lines[i])) {
       const title = lines[i].replace(/[:：]\s*$/,'').replace(/[“”"’]+/g,'').trim();
-      // find next non-empty line with >=4 comma-separated words
       for (let j = i+1; j < Math.min(i+6, lines.length); j++) {
         const words = lines[j].split(',').map(s =>
           s.replace(/[“”"’]+/g,'').replace(/[^A-Za-z'’-]/g,'').toUpperCase().trim()
         ).filter(Boolean);
-        if (words.length >= 4) {
-          groups.push({ title, words: words.slice(0,4) });
-          break;
+        if (words.length >= 4) { groups.push({ title, words: words.slice(0,4) }); break; }
+      }
+    }
+  }
+  return (groups.length === 4) ? { categories: groups } : null;
+}
+
+// ---------- date detection ----------
+const MONTHS = {
+  january:0,february:1,march:2,april:3,may:4,june:5,
+  july:6,august:7,september:8,october:9,november:10,december:11
+};
+
+function mmddyyyyToISO(monthName, dayStr, yearStr) {
+  const m = MONTHS[monthName.toLowerCase()];
+  const d = parseInt(dayStr,10);
+  const y = parseInt(yearStr,10);
+  if (Number.isNaN(m) || !d || !y) return null;
+  // Treat as calendar date (no timezone): construct UTC date for the day
+  const iso = new Date(Date.UTC(y, m, d)).toISOString().slice(0,10);
+  return iso;
+}
+
+function extractDateFromText(text) {
+  const re = /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),\s*(\d{4})\b/;
+  const m = text.match(re);
+  return m ? mmddyyyyToISO(m[1], m[2], m[3]) : null;
+}
+
+function extractDateFromJsonLd(html) {
+  const re = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let m;
+  while ((m = re.exec(html))) {
+    try {
+      const node = JSON.parse(m[1]);
+      const arr = Array.isArray(node) ? node : [node];
+      for (const obj of arr) {
+        if (obj && typeof obj === 'object') {
+          const dt = obj.datePublished || obj.dateModified;
+          if (typeof dt === 'string') {
+            // Use the calendar day of that timestamp in its own timezone assumption
+            const iso = new Date(dt).toISOString().slice(0,10);
+            return iso;
+          }
         }
       }
-    }
+    } catch (_) {}
   }
-  return (groups.length === 4) ? { date: todayISO, categories: groups } : null;
+  return null;
 }
 
-// ---------- staleness guard ----------
-async function loadPrevWordSet() {
-  try {
-    const raw = await fs.readFile(path.join(PUZZLES_DIR, 'latest.json'), 'utf8');
-    const j = JSON.parse(raw);
-    return new Set(j.categories?.flatMap(c => c.words) || []);
-  } catch {
-    return null;
+function extractDateFromMeta(html) {
+  const re = /<meta[^>]+(?:property|name)=["']article:(?:published_time|modified_time)["'][^>]+content=["']([^"']+)["'][^>]*>/i;
+  const m = html.match(re);
+  if (m) {
+    try { return new Date(m[1]).toISOString().slice(0,10); } catch { return null; }
   }
+  return null;
 }
 
-function sameWords(a, bSet) {
-  if (!a || !bSet) return false;
-  const cur = new Set(a.categories.flatMap(c => c.words));
-  if (cur.size !== bSet.size) return false;
-  for (const w of cur) if (!bSet.has(w)) return false;
-  return true;
+function pickPuzzleDate({ html, text, prevDate }) {
+  // Prefer explicit “September 15, 2025” style in page text (stable calendar date)
+  const fromText = text ? extractDateFromText(text) : null;
+  if (fromText) return fromText;
+
+  // Then structured data/meta timestamps (UTC date part)
+  const fromJsonLd = extractDateFromJsonLd(html);
+  if (fromJsonLd) return fromJsonLd;
+
+  const fromMeta = extractDateFromMeta(html);
+  if (fromMeta) return fromMeta;
+
+  // Fallback: if words differ from previous, advance previous date by 1
+  if (prevDate) {
+    const d = new Date(prevDate);
+    d.setUTCDate(d.getUTCDate() + 1);
+    return d.toISOString().slice(0,10);
+  }
+
+  // Last resort: stamp with UTC "today"
+  return new Date().toISOString().slice(0,10);
 }
 
-// ---------- main fetch with multi-source + retries ----------
+// ---------- fetch + parse with multi-source + staleness + dating ----------
 async function fetchPuzzleFresh() {
-  const prevSet = await loadPrevWordSet();
+  const prev = await loadPrev();
 
   const tries = [
-    { name: 'MAIN', url: MAIN, parse: parseFromHtml, isText: false },
-    { name: 'AMP',  url: AMP,  parse: parseFromHtml, isText: false },
-    { name: 'JINA MAIN', url: JINA(MAIN), parse: parseFromText, isText: true },
-    { name: 'JINA AMP',  url: JINA(AMP),  parse: parseFromText, isText: true },
+    { name: 'MAIN',      url: MAIN,       parser: parseFromHtml, isText: false },
+    { name: 'AMP',       url: AMP,        parser: parseFromHtml, isText: false },
+    { name: 'JINA MAIN', url: JINA(MAIN), parser: parseFromText, isText: true  },
+    { name: 'JINA AMP',  url: JINA(AMP),  parser: parseFromText, isText: true  },
   ];
 
-  // up to 2 passes; second pass waits a bit to let caches refresh
+  let lastParsed = null;
+  let lastHtml = '';
+  let lastText = '';
+
   for (let pass = 0; pass < 2; pass++) {
     for (const t of tries) {
-      const body = await fetchText(t.url);
-      const puzzle = t.parse(body);
-      if (puzzle && !sameWords(puzzle, prevSet)) {
-        console.log(`[source] ${t.name}`);
-        console.log(`[titles] ${puzzle.categories.map(c => c.title).join(' | ')}`);
-        return puzzle;
+      try {
+        const body = await fetchText(t.url);
+        const parsed = t.parser(body);
+        if (!parsed) { console.log(`[skip] ${t.name}: no parse`); continue; }
+
+        // Decide date from page content (use HTML for date extraction; JINA gives text only)
+        const htmlForDate = t.isText ? '' : body;
+        const textForDate = t.isText ? body : '';
+        const date = pickPuzzleDate({ html: htmlForDate, text: textForDate, prevDate: prev.date });
+
+        const candidate = { date, categories: parsed.categories };
+        lastParsed = candidate;
+        lastHtml = htmlForDate || lastHtml;
+        lastText = textForDate || lastText;
+
+        // If this is not the same words as yesterday, accept it
+        if (!sameWords(candidate, prev.wordSet)) {
+          console.log(`[source] ${t.name}`);
+          console.log(`[date]   ${date}`);
+          console.log(`[titles] ${candidate.categories.map(c => c.title).join(' | ')}`);
+          return candidate;
+        }
+
+        console.log(`[stale] ${t.name} looks identical to previous; trying next source…`);
+      } catch (e) {
+        console.log(`[skip] ${t.name}: ${e.message}`);
       }
     }
-    // if all sources matched previous, wait a bit and try again
+
     if (pass === 0) {
-      console.log('[info] looked stale; waiting 5s and retrying…');
-      await sleep(5000);
+      console.log('[info] all sources looked stale; waiting 6s and retrying…');
+      await sleep(6000);
     }
   }
 
-  // Last resort: return whatever we parsed first (even if same), so the run doesn't hard-fail
-  // Try MAIN once more and return it if parse succeeds.
-  const last = parseFromHtml(await fetchText(MAIN)) || parseFromHtml(await fetchText(AMP));
-  if (last) {
-    console.log('[warn] returning content that matches previous (stale at source)');
-    return last;
+  // If everything looked stale, return the best we parsed (don’t hard fail)
+  if (lastParsed) {
+    console.log('[warn] returning content that matches previous (likely CDN lag)');
+    console.log(`[date] ${lastParsed.date}`);
+    return lastParsed;
   }
   throw new Error('Could not parse 4 categories from any source.');
 }
