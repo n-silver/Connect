@@ -4,490 +4,222 @@
   <meta charset="utf-8" />
   <title>Connect</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="format-detection" content="telephone=no">
-
+  <meta name="format-detection" content="telephone=no" />
   <!-- Montserrat font -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet" />
 
   <style>
-    :root {
+    :root{
       --bg:#fafafa; --fg:#111; --muted:#6b7280; --card:#fff; --border:#e5e7eb; --focus:#0b57d0;
-      --tile-font: 14px;     /* default size */
-      --tile-font-min: 5px; /* minimum size when auto-fitting */
-      --tile-h: 70px;        /* tile height; keep 4 columns across devices */
+      --tile-font:14px; --tile-font-min:5px; --tile-h:70px;
     }
 
-/* Full-bleed divider under the top bar */
-.page-divider {
-  border: 0;
-  height: 1px;
-  background: var(--border);        /* same as tile outline */
-  margin: 8px 0 16px;
+    html,body{height:100%}
+    *,*::before,*::after{box-sizing:border-box; -webkit-text-fill-color:currentColor}
+    body{margin:0; font-family:'Montserrat',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:var(--fg)}
 
-  /* full width across the viewport, even inside a centered .wrap */
-  width: 100vw;
-  max-width: 100vw;
-  margin-left: calc(50% - 50vw);
-  margin-right: calc(50% - 50vw);
-}
-    
-    html, body { height:100%; }
-    *, *::before, *::after { -webkit-text-fill-color: currentColor; box-sizing:border-box; }
-    body { margin:0; font-family:'Montserrat', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:var(--bg); color:var(--fg); }
+    .wrap{max-width:1200px; margin:0 auto; padding:16px}
 
-    .wrap { max-width:1200px; margin:0 auto; padding:16px; }
-    h1 { margin:15px 0 30px; fontsize: var(--heading-size); font-weight:700; letter-spacing:.2px; }
-    .sub { color:var(--muted); font-size:12px; margin:0 0 12px; }
-
-    /* Toolbar */
-    .toolbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px; }
-    select, button {
-      border:1px solid var(--border); background:var(--card); border-radius:10px;
-      padding:8px 10px; font-size:14px; cursor:pointer; color:var(--fg); -webkit-appearance:none; appearance:none;
+    /* Top bar: title left, date select right, full-bleed divider underneath */
+    .topbar{
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      padding-bottom:8px; margin-bottom:16px; position:relative;
     }
-    button { font-weight:600; }
-    button:disabled { opacity:.5; cursor:not-allowed; }
-    a { color: inherit; text-decoration: none; }
-    .sr-only { position:absolute!important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+    .topbar::after{
+      content:""; position:absolute; left:50%; transform:translateX(-50%);
+      bottom:-0.5px; width:100vw; height:1px; background:var(--border); pointer-events:none;
+    }
+    .title{ margin:10px 0; font-size:32px; font-weight:700; letter-spacing:.2px; text-transform:lowercase }
+    .date-slot select{ min-width:140px; white-space:nowrap }
 
-.topbar {
-  display: flex;
-  align-items: center;          /* vertically center select vs H1 */
-  justify-content: space-between;
-  gap: 12px;
-  padding-bottom: 8px;          /* space above the line */
-  margin-bottom: 16px;          /* space below the line */
-  position: relative;           /* enable the full-bleed line */
-}
+    /* Buttons */
+    button, select{
+      border:1px solid var(--border); background:var(--card); color:var(--fg);
+      border-radius:10px; padding:8px 10px; font-size:14px; cursor:pointer; appearance:none;
+    }
+    button{ font-weight:700 }
+    button:disabled{ opacity:.5; cursor:not-allowed }
+    .actions{ display:flex; justify-content:center; align-items:center; gap:8px; margin-top:12px }
+    .help-btn, .check-btn{ padding:10px 16px }
+    .check-btn.ready{ background:#111; border-color:#111; color:#fff }
 
-/* Full-bleed, 1px light grey line that matches tile borders */
-.topbar::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);  /* center relative to viewport */
-  bottom: -0.5px;               /* crisp line */
-  width: 100vw;                 /* full viewport width */
-  height: 1px;
-  background: var(--border);    /* same colour as tile outlines */
-  pointer-events: none;
-}
-
-/* Optional: ensure the heading size looks right (uses proper CSS property) */
-.topbar .title {
-  margin: 10px 0;
-  font-size: 28px;              /* tweak to taste */
-  font-weight: 700;
-  letter-spacing: .2px;
-}
-
-
-/* Optional: tune heading spacing/size */
-.topbar .title { 
-  margin: 15px 0 30px; 
-  font-size: 32px;               /* adjust to taste */
-  font-weight: 700; 
-  letter-spacing: .2px; 
-}
-
-/* Keep the select tidy on one line */
-.topbar .date-slot select {
-  min-width: 100px;              /* tweak if you want narrower/wider */
-  white-space: nowrap;
-}
-
-/* On very small screens, keep them on one line if possible; otherwise let it wrap */
-@media (max-width: 360px) {
-  .topbar .date-slot select { min-width: 160px; }
-}
-
-
-    
     /* Grid & tiles */
-
-.check-wrap {
-  display: flex;
-  justify-content: center;
-  margin-top: 12px;
-}
-
-.check-btn {
-  border: 1px solid var(--border);
-  background: var(--card);
-  color: var(--fg);
-  border-radius: 10px;
-  padding: 10px 16px;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background .15s ease, color .15s ease, border-color .15s ease, opacity .15s ease;
-}
-
-/* turns black with white text when 4 tiles selected */
-.check-btn.ready {
-  background: #111;
-  border-color: #111;
-  color: #fff;
-}
-
-
-
-.actions {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-/* Optional: keep buttons consistent; you likely already have base styles for button */
-.actions .help-btn,
-.actions .check-btn {
-  border: 1px solid var(--border);
-  background: var(--card);
-  color: var(--fg);
-  border-radius: 10px;
-  padding: 10px 16px;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-/* You already have the “ready” style for Check; keep it */
-.check-btn.ready {
-  background: #111;
-  border-color: #111;
-  color: #fff;
-}
-
-
-    
-    .grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; max-width:1200px; margin:0 auto; }
-    .tile {
+    .grid{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; max-width:1200px; margin:0 auto }
+    .tile{
       height:var(--tile-h); border:1px solid var(--border); border-radius:14px; background:var(--card);
       font-weight:700; font-size:var(--tile-font); letter-spacing:.2px; padding:0 10px;
-      display:flex; align-items:center; justify-content:center;
+      display:flex; align-items:center; justify-content:center; white-space:nowrap; overflow:hidden;
+      box-shadow:0 1px 2px rgba(0,0,0,.05); transition:background .15s ease,border-color .15s ease,transform .15s ease;
+      color:var(--fg); user-select:none;
+    }
+    .tile:focus-visible{ outline:2px solid var(--focus); outline-offset:2px }
+    .tile.solved{ opacity:.95 }
+
+    /* Selected tiles: animated pastel border ring */
+    :root{ --sel-ring:3px }
+    .tile.sel{
+      border:var(--sel-ring) solid transparent; border-radius:14px;
+      background:
+        linear-gradient(#fff,#fff) padding-box,
+        linear-gradient(90deg,#FFE78A 0%,#C9EBC9 25%,#CFE5FF 50%,#FFC3D6 75%,#FFE78A 100%) border-box;
+      background-size:100% 100%, 300% 100%;
+      background-position:0 0, 0% 50%;
+      animation:selPastelFlow 6s linear infinite;
       box-shadow:0 1px 2px rgba(0,0,0,.05);
-      transition: background .15s ease, border-color .15s ease, transform .15s ease;
-      user-select:none; overflow:hidden; white-space:nowrap; color: var(--fg);
     }
-    .tile.solved { opacity:.95; }
-    .tile:focus-visible { outline:2px solid var(--focus); outline-offset:2px; }
+    @keyframes selPastelFlow{ 0%{background-position:0 0,0% 50%} 100%{background-position:0 0,300% 50%} }
+    @media (prefers-reduced-motion:reduce){ .tile.sel{ animation:none } }
 
-    .status { margin:14px 0; font-size:14px; color:var(--muted); min-height:1.5em; text-align:center; }
-    .footer { text-align:center; color:var(--muted); font-size:12px; margin-top:16px; }
-    code { background:#eee; padding:1px 4px; border-radius:4px; }
+    /* Solved group (full-width tile) */
+    .solved-group{ grid-column:1 / -1; padding:12px; border-radius:14px; text-align:center; display:flex; flex-direction:column; gap:4px }
+    .solved-title{ font-weight:700; font-size:14px; letter-spacing:.2px; margin:0 }
+    .solved-words-line{ font-weight:500; font-size:14px; opacity:.95 }
 
-  
+    /* Pastel palette for solved groups */
+    .tile.solved.solved-group.p-blue   { background:#e8f2ff !important; border-color:#cfe5ff !important; color:#0f253a !important }
+    .tile.solved.solved-group.p-yellow { background:#fff7cc !important; border-color:#ffe78a !important; color:#3a3200 !important }
+    .tile.solved.solved-group.p-pink   { background:#ffe0ea !important; border-color:#ffc3d6 !important; color:#3a0e20 !important }
+    .tile.solved.solved-group.p-green  { background:#e6f7e6 !important; border-color:#c9ebc9 !important; color:#0f2a0f !important }
 
- /* Pastel palette for solved groups */
-    .tile.solved.solved-group.p-blue   { background:#e8f2ff !important; border-color:#cfe5ff !important; color:#0f253a !important; }
-    .tile.solved.solved-group.p-yellow { background:#fff7cc !important; border-color:#ffe78a !important; color:#3a3200 !important; }
-    .tile.solved.solved-group.p-pink   { background:#ffe0ea !important; border-color:#ffc3d6 !important; color:#3a0e20 !important; }
-    .tile.solved.solved-group.p-green  { background:#e6f7e6 !important; border-color:#c9ebc9 !important; color:#0f2a0f !important; }
+    /* Optional: compact solved chips (hidden by default) */
+    .solved-list{ display:none }
 
+    /* Accessibility helpers */
+    .sr-only{ position:absolute!important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0 }
 
-/* Animated pastel flow ring for ANY selected tile */
-:root { --sel-ring: 3px; } /* ring thickness; 1px matches your normal border */
-
-.tile { --sel-fill:#fff; } /* inner fill default (white) */
-
-.tile.sel {
-  /* Make the gradient live in the border so it fits perfectly (no gaps/clipping) */
-  border: var(--sel-ring) solid transparent;
-  border-radius: 14px; /* match your .tile radius exactly */
-  background:
-    /* inner layer: the tile fill (changes on hover) */
-    linear-gradient(var(--sel-fill), var(--sel-fill)) padding-box,
-    /* outer layer: animated pastel flow ring */
-    linear-gradient(90deg,
-      #FFE78A 0%,
-      #C9EBC9 25%,
-      #CFE5FF 50%,
-      #FFC3D6 75%,
-      #FFE78A 100%
-    ) border-box;
-  background-size: 100% 100%, 300% 100%;
-  background-position: 0 0, 0% 50%;
-  animation: selPastelFlow 6s linear infinite;
-  will-change: background-position;
-  box-shadow: 0 1px 2px rgba(0,0,0,.05); /* keep the subtle shadow */
-}
-
-
-
-@keyframes selPastelFlow {
-  0%   { background-position: 0 0,   0% 50%; }
-  100% { background-position: 0 0, 300% 50%; }
-}
-
-/* Reduced motion */
-@media (prefers-reduced-motion: reduce) {
-  .tile.sel { animation: none; }
-}
-
-
-
-
-
-
-
-
-
-    
-    /* Solved group container spanning full width */
-    .solved-group { grid-column:1 / -1; padding:12px; border-radius:14px; text-align:center; display:flex; flex-direction:column; gap:4px; }
-    .solved-title { font-weight:700; font-size:14px; letter-spacing:.2px; margin:0; text-align:center; }
-    .solved-words-line { font-weight:500; font-size:14px; opacity:.95; }
-
-    /* Compact solved panel chips (optional) */
-    .solved-list { display:none; }
-    .solved { border:1px solid var(--border); border-radius:12px; padding:8px 10px; font-weight:600; display:flex; flex-wrap:wrap; gap:8px; align-items:center; background:var(--card); }
-
-    /* Keep 4 columns even on small screens; tiles will shrink and auto-fit text */
-    @media (max-width: 360px) {
-      :root { --tile-font: 13px; --tile-h: 78px; --heading-size: clamp(100px, 6vw, 100px);}
+    /* Keep 4 columns on small screens; shrink tiles/text instead */
+    @media (max-width:360px){
+      :root{ --tile-font:13px; --tile-h:78px }
+      .date-slot select{ min-width:160px }
     }
-
-
-
-    
   </style>
 </head>
 <body>
   <div class="wrap">
-    <!-- Top bar: title left, date select right -->
-<div class="topbar">
-  <h1 class="title">connect</h1>
-  <div class="date-slot">
-    <label for="puzzle-select" class="sr-only">Choose puzzle</label>
-    <select id="puzzle-select" aria-label="Choose puzzle"></select>
-  </div>
-</div>
-
-
+    <div class="topbar">
+      <h1 class="title">connect</h1>
+      <div class="date-slot">
+        <label for="puzzle-select" class="sr-only">Choose puzzle</label>
+        <select id="puzzle-select" aria-label="Choose puzzle"></select>
+      </div>
+    </div>
 
     <div id="solved" class="solved-list" aria-live="polite"></div>
     <div id="grid" class="grid" role="grid" aria-label="Connections grid of 16 tiles"></div>
-    
-   <!-- Bottom actions: Help (left) + Check (right) -->
-<div class="actions">
-  <button id="btn-help" class="help-btn" title="Reveal two tiles">Help</button>
-  <button id="btn-check" class="check-btn" title="Check selected tiles" aria-disabled="true">Check</button>
-</div>
 
-
-    <div class="footer">
+    <div class="actions">
+      <button id="btn-help"  class="help-btn"  title="Reveal two tiles">Help</button>
+      <button id="btn-check" class="check-btn" title="Check selected tiles" aria-disabled="true">Check</button>
     </div>
   </div>
 
-<script>
-(function () {
-  /* ========= Helpers ========= */
-  const $  = (sel, root = document) => root.querySelector(sel);
-  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
-  const shuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [arr[i],arr[j]] = [arr[j],arr[i]]; } return arr; };
-  const PASTELS = ['p-blue','p-yellow','p-pink','p-green'];
+  <script>
+  (function(){
+    /* ---------- Tiny DOM helpers ---------- */
+    const $  = (sel, root = document) => root.querySelector(sel);
+    const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+    const shuffle = a => { for (let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]] } return a };
+    const PASTELS = ['p-blue','p-yellow','p-pink','p-green'];
 
-  /* ========= State ========= */
-  let manifest = [];                 // dates newest-first
-  const puzzleCache = new Map();     // date -> puzzle
-  let currentDate = null;
-  let selected = [];
-  let solvedGroups = [];
-  let layout = [];
-  let stagedHelp = null;             // { group, hinted:Set<string>, color }
+    /* ---------- Elements (late-bound) ---------- */
+    let sel, grid, solvedList, btnCheck, btnHelp;
 
-  /* ========= Elements (late-bound) ========= */
-  let sel, grid, solvedList, btnCheck, btnHelp, msg;
+    /* ---------- State ---------- */
+    let manifest = [];                 // dates (newest-first)
+    const cache = new Map();           // date -> puzzle json
+    let currentDate = null;
+    let currentPuzzle = null;
+    let selected = [];
+    let solvedGroups = [];
+    let layout = [];
+    let stagedHelp = null;             // { group, hinted:Set<string> }
 
-  /* ========= Fit text ========= */
-  const BASE_SIZE = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tile-font')) || 14;
-  const MIN_SIZE  = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tile-font-min')) || 10;
-  function fits(el){ return el.scrollWidth <= el.clientWidth && el.scrollHeight <= el.clientHeight; }
-  function fitText(el){
-    el.style.fontSize = BASE_SIZE + 'px';
-    if (fits(el)) return;
-    let size = BASE_SIZE;
-    while (size > MIN_SIZE) {
-      size -= 1;
-      el.style.fontSize = size + 'px';
-      if (fits(el)) break;
+    /* ---------- Fit-to-tile text ---------- */
+    const BASE_SIZE = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tile-font')) || 14;
+    const MIN_SIZE  = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tile-font-min')) || 10;
+    const fits = el => el.scrollWidth <= el.clientWidth && el.scrollHeight <= el.clientHeight;
+    function fitText(el){
+      el.style.fontSize = BASE_SIZE + 'px';
+      if (fits(el)) return;
+      let s = BASE_SIZE;
+      while (s > MIN_SIZE) { s--; el.style.fontSize = s + 'px'; if (fits(el)) break; }
     }
-  }
-  function fitAllTiles(){ [...$$('.tile'), ...$$('[data-fit]')].forEach(fitText); }
-  const ro = new ResizeObserver(() => fitAllTiles());
+    function fitAllTiles(){ [...$$('.tile'), ...$$('[data-fit]')].forEach(fitText); }
+    const ro = new ResizeObserver(() => fitAllTiles());
 
-  /* ========= UK date gating ========= */
-  function todayUK() {
-    const parts = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Europe/London', year:'numeric', month:'2-digit', day:'2-digit'
-    }).formatToParts(new Date());
-    const y = parts.find(p => p.type === 'year').value;
-    const m = parts.find(p => p.type === 'month').value;
-    const d = parts.find(p => p.type === 'day').value;
-    return `${y}-${m}-${d}`;
-  }
-  const PREVIEW_MODE = new URLSearchParams(location.search).has('preview');
-
-  async function fetchJSON(candidates) {
-    const list = Array.isArray(candidates) ? candidates : [candidates];
-    const errs = [];
-    for (const url of list) {
-      try {
-        const res = await fetch(url, { cache: 'no-store' });
-        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-        return await res.json();
-      } catch (e) { errs.push(`${url}: ${e.message}`); }
+    /* ---------- UK date gating ---------- */
+    function todayUK(){
+      const parts = new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+      const y = parts.find(p=>p.type==='year').value, m=parts.find(p=>p.type==='month').value, d=parts.find(p=>p.type==='day').value;
+      return `${y}-${m}-${d}`;
     }
-    throw new Error(errs.join(' | '));
-  }
+    const PREVIEW_MODE = new URLSearchParams(location.search).has('preview');
 
-  async function loadEligibleDates() {
-    const all = await fetchJSON(['puzzles/manifest.json', '/puzzles/manifest.json']); // support subpath hosting
-    if (PREVIEW_MODE) return all;
-    const cutoff = todayUK();
-    const eligible = all.filter(d => d <= cutoff);
-    return eligible.length ? eligible : all;
-  }
-
-  async function fetchPuzzle(dateISO) {
-    if (puzzleCache.has(dateISO)) return puzzleCache.get(dateISO);
-    const data = await fetchJSON([`puzzles/${dateISO}.json`, `/puzzles/${dateISO}.json`]);
-    puzzleCache.set(dateISO, data);
-    return data;
-  }
-
-  function setDropdownDates(dates) {
-    sel.innerHTML = '';
-    for (const d of dates) {
-      const opt = document.createElement('option');
-      opt.value = d;
-      opt.textContent = d;
-      sel.appendChild(opt);
-    }
-  }
-
-  /* ========= Single source of truth to display a date ========= */
-  async function applyDate(dateISO) {
-    const pj = await fetchPuzzle(dateISO);
-
-    // Reset per-puzzle state
-    currentDate   = dateISO;
-    selected      = [];
-    solvedGroups  = [];
-    layout        = [];
-    stagedHelp    = null;
-
-    // Expose for existing code paths that rely on globals
-    window.puzzles      = [pj];
-    window.currentIndex = 0;
-
-    // Render via your existing flow
-    if (typeof startPuzzle === 'function') startPuzzle();
-  }
-
-  /* ========= Misc helpers you already use ========= */
-  function wordsOfSolved() { return solvedGroups.flatMap(g => g.words); }
-  function isSolvedWord(w) { return solvedGroups.some(g => g.words.includes(w)); }
-  function buildInitialLayout(p) {
-    const words = p.categories.flatMap(c => c.words);
-    shuffle(words);
-    layout = words;
-  }
-  function rebuildLayoutSolvedFirst() {
-    const top = []; const seen = new Set();
-    for (const g of solvedGroups) for (const w of g.words) if (!seen.has(w)) { top.push(w); seen.add(w); }
-    const rest = layout.filter(w => !seen.has(w));
-    layout = [...top, ...rest];
-  }
-  function colorClassForWord(w) {
-    for (let i = 0; i < solvedGroups.length; i++) {
-      if (solvedGroups[i].words.includes(w)) return PASTELS[i] || PASTELS[PASTELS.length - 1];
-    }
-    return '';
-  }
-  function updateCheckUI() {
-    const ready = selected.length === 4;
-    btnCheck.classList.toggle('ready', ready);
-    btnCheck.setAttribute('aria-disabled', ready ? 'false' : 'true');
-  }
-
-  /* ========= Boot (ONLY this path) ========= */
-  async function bootFromManifest() {
-    try {
-      manifest = await loadEligibleDates();
-      if (!manifest.length) throw new Error('No dates in manifest.');
-      setDropdownDates(manifest);
-
-      const defaultDate = manifest[0]; // newest eligible (≤ today UK)
-      sel.value = defaultDate;
-
-      await applyDate(defaultDate);    // force correct puzzle on first paint
-
-      sel.addEventListener('change', () => applyDate(sel.value));
-    } catch (e) {
-      console.error(e);
-      if (msg) msg.textContent = 'Failed to load puzzles.';
-    }
-  }
-
-  document.addEventListener('DOMContentLoaded', () => {
-    // Late-bind elements so they exist
-    sel        = $('#puzzle-select');
-    grid       = $('#grid');
-    solvedList = $('#solved');
-    btnCheck   = $('#btn-check');
-    btnHelp    = $('#btn-help');
-    msg        = $('#msg');
-
-    if (!sel || !grid) {
-      console.error('Missing essential DOM nodes (#puzzle-select or #grid).');
-      return;
+    async function fetchJSON(candidates){
+      const list = Array.isArray(candidates)?candidates:[candidates];
+      const errs = [];
+      for (const url of list){
+        try{
+          const res = await fetch(url,{cache:'no-store'});
+          if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+          return await res.json();
+        }catch(e){ errs.push(`${url}: ${e.message}`); }
+      }
+      throw new Error(errs.join(' | '));
     }
 
-    // IMPORTANT: do NOT call any old boot like loadEmbedded()/startPuzzle() here.
-    bootFromManifest();
-  });
-})();
-<script>
+    async function loadEligibleDates(){
+      const all = await fetchJSON(['puzzles/manifest.json','/puzzles/manifest.json']);
+      if (PREVIEW_MODE) return all;
+      const cutoff = todayUK();
+      const eligible = all.filter(d => d <= cutoff);
+      return eligible.length ? eligible : all;
+    }
 
+    async function getPuzzle(dateISO){
+      if (cache.has(dateISO)) return cache.get(dateISO);
+      const data = await fetchJSON([`puzzles/${dateISO}.json`, `/puzzles/${dateISO}.json`]);
+      cache.set(dateISO, data);
+      return data;
+    }
 
-   // ===== Render =====
-    function renderGrid() {
+    function setDropdownDates(dates){
+      sel.innerHTML = '';
+      for (const d of dates){
+        const opt = document.createElement('option');
+        opt.value = d; opt.textContent = d;
+        sel.appendChild(opt);
+      }
+    }
+
+    /* ---------- Rendering ---------- */
+    function renderGrid(){
       grid.innerHTML = '';
 
-      // solved groups (full-width)
+      // Solved groups (top, full width)
       solvedGroups.forEach((g, idx) => {
-        const cont = document.createElement('div');
-        cont.className = `tile solved solved-group ${PASTELS[idx] || PASTELS[PASTELS.length - 1]}`;
-        cont.style.gridColumn = '1 / -1';
+        const wrap = document.createElement('div');
+        wrap.className = `tile solved solved-group ${PASTELS[idx] || PASTELS[PASTELS.length-1]}`;
+        wrap.style.gridColumn = '1 / -1';
 
-        const title = document.createElement('div');
-        title.className = 'solved-title';
-        title.textContent = g.title;
+        const t = document.createElement('div'); t.className='solved-title';      t.textContent = g.title;
+        const w = document.createElement('div'); w.className='solved-words-line'; w.textContent = g.words.join(', ');
 
-        const wordsLine = document.createElement('div');
-        wordsLine.className = 'solved-words-line';
-        wordsLine.textContent = g.words.join(', ');
-
-        cont.appendChild(title);
-        cont.appendChild(wordsLine);
-        grid.appendChild(cont);
+        wrap.appendChild(t); wrap.appendChild(w); grid.appendChild(wrap);
       });
 
-      // remaining tiles
-      for (const w of layout) {
+      // Remaining tiles
+      for (const w of layout){
         const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'tile';
-        btn.textContent = w;
-        // HINT: color the hinted tiles
+        btn.type = 'button'; btn.className = 'tile'; btn.textContent = w;
+
+        // Hint cosmetic (keeps normal border so selection effect is still visible)
         if (stagedHelp && stagedHelp.hinted && stagedHelp.hinted.has(w)) {
-          btn.classList.add('hint', stagedHelp.color);
-          }
+          btn.classList.add('hint');
+        }
+
         btn.addEventListener('click', () => toggleWord(btn, w));
         grid.appendChild(btn);
         ro.observe(btn);
@@ -495,78 +227,53 @@
       fitAllTiles();
     }
 
-    function renderSolvedPanel() {
-      solvedList.innerHTML = '';
-      solvedGroups.forEach((g, idx) => {
-        const div = document.createElement('div');
-        div.className = `solved ${PASTELS[idx] || PASTELS[PASTELS.length - 1]}`;
-        div.innerHTML = `<span>${g.title}</span><span style="opacity:.6">•</span><span>${g.words.join(', ')}</span>`;
-        solvedList.appendChild(div);
-      });
+    /* ---------- Game helpers ---------- */
+    const wordsOfSolved = () => solvedGroups.flatMap(g => g.words);
+    const isSolvedWord  = w => solvedGroups.some(g => g.words.includes(w));
+
+    function buildInitialLayout(p){
+      const words = p.categories.flatMap(c => c.words);
+      shuffle(words);
+      layout = words;
+    }
+    function rebuildLayoutSolvedFirst(){
+      const top=[]; const seen=new Set();
+      for (const g of solvedGroups) for (const w of g.words) if (!seen.has(w)){ top.push(w); seen.add(w); }
+      const rest = layout.filter(w => !seen.has(w));
+      layout = [...top, ...rest];
     }
 
-    // ===== Game flow =====
-    async function startPuzzle() {
-      selected = [];
-      solvedGroups = [];
-      stagedHelp = null;
+    function clearSelectionClasses(){ $$('.tile.sel').forEach(n => n.classList.remove('sel')); }
+    function updateCheckUI(){
+      const ready = selected.length === 4;
+      btnCheck.classList.toggle('ready', ready);
+      btnCheck.setAttribute('aria-disabled', ready ? 'false' : 'true');
+    }
+
+    function toggleWord(el, word){
+      if (isSolvedWord(word)) return;
+      const i = selected.indexOf(word);
+      if (i >= 0){ selected.splice(i,1); el.classList.remove('sel'); }
+      else{
+        if (selected.length === 4){ clearSelectionClasses(); selected = [word]; el.classList.add('sel'); }
+        else { selected.push(word); el.classList.add('sel'); }
+      }
       updateCheckUI();
-
-      const p = await loadPuzzle(currentDate);
-      buildInitialLayout(p);
-      renderGrid();
     }
 
-    function toggleWord(el, word) {
-  if (isSolvedWord(word)) return;
-
-  const i = selected.indexOf(word);
-
-  if (i >= 0) {
-    // Deselect allowed (even for hinted tiles)
-    selected.splice(i, 1);
-    el.classList.remove('sel');
-  } else {
-    // Select
-    if (selected.length === 4) {
-      clearSelectionClasses();
-      selected = [word];
-      el.classList.add('sel');
-    } else {
-      selected.push(word);
-      el.classList.add('sel');
-    }
-  }
-
-  if (typeof updateCheckUI === 'function') updateCheckUI();
-}
-
-
-    function clearSelectionClasses() {
-      $$('.tile.sel').forEach(n => n.classList.remove('sel'));
+    function checkSelection(){
+      if (selected.length !== 4 || !currentPuzzle) return;
+      const pick = new Set(selected);
+      const match = currentPuzzle.categories.find(c => c.words.every(w => pick.has(w)));
+      if (match && !solvedGroups.some(g => g.title === match.title)){
+        revealGroup(match);
+      } else {
+        clearSelectionClasses(); selected = []; updateCheckUI();
+      }
     }
 
-    function checkSelection() {
-      if (selected.length !== 4) return;
-      loadPuzzle(currentDate).then(p => {
-        const pick = new Set(selected);
-        const match = p.categories.find(c => c.words.every(w => pick.has(w)));
-
-        if (match && !solvedGroups.some(g => g.title === match.title)) {
-          revealGroup(match);
-        } else {
-          clearSelectionClasses();
-          selected = [];
-          updateCheckUI();
-
-        }
-      });
-    }
-
-    function revealGroup(group) {
-        if (stagedHelp && stagedHelp.group && stagedHelp.group.title === group.title) {
-    stagedHelp = null;
-  }
+    function revealGroup(group){
+      if (stagedHelp && stagedHelp.group && stagedHelp.group.title === group.title) stagedHelp = null;
       solvedGroups.push(group);
       const gset = new Set(group.words);
       layout = layout.filter(w => !gset.has(w));
@@ -575,97 +282,72 @@
       renderGrid();
     }
 
-    function helpSolveOne(randomize=true) {
-      loadPuzzle(currentDate).then(p => {
-        const unsolved = p.categories.filter(c => !solvedGroups.some(g => g.title === c.title));
-        if (!unsolved.length) return;
-        const group = randomize ? unsolved[Math.floor(Math.random()*unsolved.length)] : unsolved[0];
-        revealGroup(group);
-      });
+    function handleHelp(){
+      if (!currentPuzzle) return;
+
+      // Second press completes staged group
+      if (stagedHelp && stagedHelp.group){ revealGroup(stagedHelp.group); return; }
+
+      // First press: pick a random unsolved group, hint 2 words and move them to front
+      const unsolved = currentPuzzle.categories.filter(c => !solvedGroups.some(g => g.title === c.title));
+      if (!unsolved.length) return;
+
+      const group = unsolved[Math.floor(Math.random()*unsolved.length)];
+      const words = [...group.words];
+      for (let i=words.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [words[i],words[j]]=[words[j],words[i]]; }
+      const two = words.slice(0,2);
+
+      stagedHelp = { group, hinted:new Set(two) };
+      const rest = layout.filter(w => !stagedHelp.hinted.has(w));
+      layout = [...two, ...rest];
+      renderGrid();
     }
 
+    /* ---------- Apply a date (single source of truth) ---------- */
+    async function applyDate(dateISO){
+      currentDate   = dateISO;
+      currentPuzzle = await getPuzzle(dateISO);
 
+      selected = []; solvedGroups = []; layout = []; stagedHelp = null;
 
-    // Wire up controls
-    btnCheck.addEventListener('click', checkSelection);
-btnHelp.addEventListener('click', handleHelp);
-
-function handleHelp() {
-  // Load the current puzzle (for the /puzzles loader)
-  loadPuzzle(currentDate).then(p => {
-    // If we already staged a hint, finish that group on second press
-    if (stagedHelp && stagedHelp.group) {
-      // Reveal/solve that whole group now
-      revealGroup(stagedHelp.group);
-      return;
+      buildInitialLayout(currentPuzzle);
+      renderGrid();
+      updateCheckUI();
     }
 
-    // Otherwise, stage a new random unsolved group and hint 2 tiles
-    const unsolved = p.categories.filter(c => !solvedGroups.some(g => g.title === c.title));
-    if (!unsolved.length) return;
+    /* ---------- Boot ---------- */
+    async function boot(){
+      try{
+        manifest = await loadEligibleDates();
+        if (!manifest.length) throw new Error('No dates in manifest.');
 
-    // Pick a random group
-    const group = unsolved[Math.floor(Math.random() * unsolved.length)];
+        setDropdownDates(manifest);
 
-    // Pick 2 of its words at random
-    const words = [...group.words];
-    for (let i = words.length - 1; i > 0; i--) { // shuffle
-      const j = Math.floor(Math.random() * (i + 1));
-      [words[i], words[j]] = [words[j], words[i]];
+        const defaultDate = manifest[0]; // newest eligible (≤ today UK)
+        sel.value = defaultDate;
+
+        await applyDate(defaultDate); // ensure first paint shows the right day
+
+        sel.addEventListener('change', () => applyDate(sel.value));
+        btnCheck.addEventListener('click', checkSelection);
+        btnHelp.addEventListener('click', handleHelp);
+      }catch(e){
+        console.error(e);
+        // optionally show a small inline error somewhere if you add an element for it
+      }
     }
-    const two = words.slice(0, 2);
 
-    // Assign it the *next* pastel (same as it will be when solved)
-    const color = PASTELS[Math.min(solvedGroups.length, PASTELS.length - 1)] || PASTELS[0];
+    document.addEventListener('DOMContentLoaded', () => {
+      sel        = $('#puzzle-select');
+      grid       = $('#grid');
+      solvedList = $('#solved');
+      btnCheck   = $('#btn-check');
+      btnHelp    = $('#btn-help');
 
-    // Stage hint state
-    stagedHelp = { group, hinted: new Set(two), color };
-
-    // Move the two hinted tiles to the top of the unsolved layout (first row)
-    // 1) Remove them from wherever they are
-    const rest = layout.filter(w => !stagedHelp.hinted.has(w));
-    // 2) Put them at the front
-    layout = [...two, ...rest];
-
-    // Re-render to show colored, pinned tiles under solved rows
-    renderGrid();
-  });
-}
-
-    // Boot
-    (async function init(){
-      await loadManifest();
-      if (!manifest.length) return;
-      populateSelect();
-      currentDate = manifest[0];
-      sel.value = currentDate;
-      await startPuzzle();
-    })();
+      if (!sel || !grid){ console.error('Missing #puzzle-select or #grid'); return; }
+      boot();
+    });
   })();
   </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
