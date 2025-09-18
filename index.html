@@ -286,20 +286,14 @@
   <!-- No embedded JSON. The app fetches /puzzles/manifest.json and /puzzles/<date>.json -->
 
  <script>
+<!-- No embedded JSON. The app fetches /puzzles/manifest.json and /puzzles/<date>.json -->
+<script>
 (function () {
   /* ========= Helpers ========= */
   const $  = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
   const shuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [arr[i],arr[j]] = [arr[j],arr[i]]; } return arr; };
   const PASTELS = ['p-blue','p-yellow','p-pink','p-green'];
-
-  /* ========= Elements ========= */
-  const sel        = $('#puzzle-select');
-  const grid       = $('#grid');
-  const solvedList = $('#solved');
-  const btnCheck   = $('#btn-check');
-  const btnHelp    = $('#btn-help');
-  const msg        = $('#msg');
 
   /* ========= State ========= */
   let manifest = [];                 // dates newest-first
@@ -309,6 +303,9 @@
   let solvedGroups = [];
   let layout = [];
   let stagedHelp = null;             // { group, hinted:Set<string>, color }
+
+  /* ========= Elements (late-bound) ========= */
+  let sel, grid, solvedList, btnCheck, btnHelp, msg;
 
   /* ========= Fit text ========= */
   const BASE_SIZE = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tile-font')) || 14;
@@ -339,9 +336,21 @@
   }
   const PREVIEW_MODE = new URLSearchParams(location.search).has('preview');
 
+  async function fetchJSON(candidates) {
+    const list = Array.isArray(candidates) ? candidates : [candidates];
+    const errs = [];
+    for (const url of list) {
+      try {
+        const res = await fetch(url, { cache: 'no-store' });
+        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+        return await res.json();
+      } catch (e) { errs.push(`${url}: ${e.message}`); }
+    }
+    throw new Error(errs.join(' | '));
+  }
+
   async function loadEligibleDates() {
-    const res = await fetch('puzzles/manifest.json', { cache: 'no-store' });
-    const all = await res.json(); // newest-first
+    const all = await fetchJSON(['puzzles/manifest.json', '/puzzles/manifest.json']); // support subpath hosting
     if (PREVIEW_MODE) return all;
     const cutoff = todayUK();
     const eligible = all.filter(d => d <= cutoff);
@@ -350,14 +359,12 @@
 
   async function fetchPuzzle(dateISO) {
     if (puzzleCache.has(dateISO)) return puzzleCache.get(dateISO);
-    const res = await fetch(`puzzles/${dateISO}.json`, { cache: 'no-store' });
-    if (!res.ok) throw new Error(`Could not load puzzle for ${dateISO}`);
-    const data = await res.json();
+    const data = await fetchJSON([`puzzles/${dateISO}.json`, `/puzzles/${dateISO}.json`]);
     puzzleCache.set(dateISO, data);
     return data;
   }
 
-  async function populateSelectWithDates(dates) {
+  function setDropdownDates(dates) {
     sel.innerHTML = '';
     for (const d of dates) {
       const opt = document.createElement('option');
@@ -381,37 +388,12 @@
     // Expose for existing code paths that rely on globals
     window.puzzles      = [pj];
     window.currentIndex = 0;
-    window.selected     = selected;
-    window.solvedGroups = solvedGroups;
-    window.layout       = layout;
 
     // Render via your existing flow
     if (typeof startPuzzle === 'function') startPuzzle();
   }
 
-  /* ========= Boot: only load newest eligible (≤ today UK) ========= */
-  async function bootFromManifest() {
-    try {
-      manifest = await loadEligibleDates();          // filtered list
-      await populateSelectWithDates(manifest);
-
-      const defaultDate = manifest[0];               // newest eligible
-      sel.value = defaultDate;
-
-      // Force correct puzzle immediately (prevents “tomorrow” on first paint)
-      await applyDate(defaultDate);
-
-      // Keep using the same path on user change
-      sel.addEventListener('change', async () => {
-        await applyDate(sel.value);
-      });
-    } catch (e) {
-      console.error(e);
-      if (msg) msg.textContent = 'Failed to load puzzles.';
-    }
-  }
-
-  /* ========= Misc UI helpers you already had ========= */
+  /* ========= Misc helpers you already use ========= */
   function wordsOfSolved() { return solvedGroups.flatMap(g => g.words); }
   function isSolvedWord(w) { return solvedGroups.some(g => g.words.includes(w)); }
   function buildInitialLayout(p) {
@@ -437,16 +419,45 @@
     btnCheck.setAttribute('aria-disabled', ready ? 'false' : 'true');
   }
 
-  /* ========= Start the app (and ONLY this boot) ========= */
+  /* ========= Boot (ONLY this path) ========= */
+  async function bootFromManifest() {
+    try {
+      manifest = await loadEligibleDates();
+      if (!manifest.length) throw new Error('No dates in manifest.');
+      setDropdownDates(manifest);
+
+      const defaultDate = manifest[0]; // newest eligible (≤ today UK)
+      sel.value = defaultDate;
+
+      await applyDate(defaultDate);    // force correct puzzle on first paint
+
+      sel.addEventListener('change', () => applyDate(sel.value));
+    } catch (e) {
+      console.error(e);
+      if (msg) msg.textContent = 'Failed to load puzzles.';
+    }
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
+    // Late-bind elements so they exist
+    sel        = $('#puzzle-select');
+    grid       = $('#grid');
+    solvedList = $('#solved');
+    btnCheck   = $('#btn-check');
+    btnHelp    = $('#btn-help');
+    msg        = $('#msg');
+
+    if (!sel || !grid) {
+      console.error('Missing essential DOM nodes (#puzzle-select or #grid).');
+      return;
+    }
+
     // IMPORTANT: do NOT call any old boot like loadEmbedded()/startPuzzle() here.
     bootFromManifest();
   });
 })();
 
-
-
-    // ===== Render =====
+   // ===== Render =====
     function renderGrid() {
       grid.innerHTML = '';
 
@@ -636,6 +647,7 @@ function handleHelp() {
   </script>
 </body>
 </html>
+
 
 
 
