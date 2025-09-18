@@ -294,6 +294,110 @@
 
     const PASTELS = ['p-blue','p-yellow','p-pink','p-green'];
 
+<script>
+  // ---- UK date helper: returns YYYY-MM-DD in Europe/London
+  function todayUK() {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).formatToParts(new Date());
+    const y = parts.find(p => p.type === 'year').value;
+    const m = parts.find(p => p.type === 'month').value;
+    const d = parts.find(p => p.type === 'day').value;
+    return `${y}-${m}-${d}`;
+  }
+
+  // Optional: allow preview via URL (e.g., ?preview=1)
+  const PREVIEW_MODE = new URLSearchParams(location.search).has('preview');
+
+  async function loadEligibleDates() {
+    const res = await fetch('puzzles/manifest.json', { cache: 'no-store' });
+    const manifest = await res.json(); // array of ISO dates, newest-first
+    if (PREVIEW_MODE) return manifest;
+
+    const cutoff = todayUK();
+    const eligible = manifest.filter(d => d <= cutoff);
+    // Fallback: if nothing eligible (first run), just return whatever is there
+    return eligible.length ? eligible : manifest;
+  }
+
+  async function fetchPuzzleByDate(dateISO) {
+    const res = await fetch(`puzzles/${dateISO}.json`, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`Could not load puzzle for ${dateISO}`);
+    return await res.json();
+  }
+
+  async function populateSelectWithDates(dates) {
+    const sel = document.getElementById('puzzle-select');
+    sel.innerHTML = '';
+    dates.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d;
+      opt.textContent = d;
+      sel.appendChild(opt);
+    });
+  }
+
+  // Glue: initialize dropdown + default puzzle (newest eligible)
+  async function bootFromManifest() {
+    const dates = await loadEligibleDates();
+    await populateSelectWithDates(dates);
+
+    const sel = document.getElementById('puzzle-select');
+    const defaultDate = dates[0]; // newest eligible
+    sel.value = defaultDate;
+
+    // Load that puzzle into your existing state/renderer
+    const p = await fetchPuzzleByDate(defaultDate);
+    // If your app still expects `puzzles` array or `startPuzzle()`, adapt here:
+    // Example: replace your payload/puzzles/selection with this one puzzle:
+    window.__currentManifestDates = dates; // (optional) keep if you need later
+    window.__currentPuzzleDate = defaultDate;
+
+    // If your code used a global `puzzles` array:
+    // puzzles = [p]; currentIndex = 0; startPuzzle();
+
+    // If your code has a "load puzzle JSON then render" function, call it here:
+    // e.g., applyPuzzle(p)
+    if (typeof startPuzzleFromJSON === 'function') {
+      startPuzzleFromJSON(p); // your own hook if you have it
+    } else if (typeof window.applyPuzzle === 'function') {
+      window.applyPuzzle(p);
+    } else {
+      // Minimal inline fallback: if earlier you had `puzzles[]` and `startPuzzle()`:
+      window.puzzles = [p];
+      window.currentIndex = 0;
+      if (typeof startPuzzle === 'function') startPuzzle();
+    }
+
+    // Change handler for user-initiated date switches (still only eligible dates)
+    sel.addEventListener('change', async () => {
+      const date = sel.value;
+      const pj = await fetchPuzzleByDate(date);
+      window.__currentPuzzleDate = date;
+      // same render hook as above
+      if (typeof startPuzzleFromJSON === 'function') {
+        startPuzzleFromJSON(pj);
+      } else if (typeof window.applyPuzzle === 'function') {
+        window.applyPuzzle(pj);
+      } else {
+        window.puzzles = [pj];
+        window.currentIndex = 0;
+        if (typeof startPuzzle === 'function') startPuzzle();
+      }
+    });
+  }
+
+  // Call this instead of your old boot that auto-picked "latest"
+  document.addEventListener('DOMContentLoaded', () => {
+    bootFromManifest().catch(err => {
+      console.error(err);
+      const msg = document.getElementById('msg');
+      if (msg) msg.textContent = 'Failed to load puzzles.';
+    });
+  });
+</script>
+
+    
     // State
     let manifest = [];            // ['2025-09-13', '2025-09-12', ...] newest first
     let puzzleCache = new Map();  // date -> { date, categories }
