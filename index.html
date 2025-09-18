@@ -12,8 +12,28 @@
 
   <style>
     :root{
+      /* Base UI */
       --bg:#fafafa; --fg:#111; --muted:#6b7280; --card:#fff; --border:#e5e7eb; --focus:#0b57d0;
       --tile-font:14px; --tile-font-min:5px; --tile-h:70px;
+
+      /* Pastel palette (unified) */
+      --pastel-blue-bg:#e8f2ff;   --pastel-blue-border:#cfe5ff;   --pastel-blue-fg:#0f253a;
+      --pastel-yellow-bg:#fff7cc; --pastel-yellow-border:#ffe78a; --pastel-yellow-fg:#3a3200;
+      /* Softer pink (replaces the old red) */
+      --pastel-pink-bg:#ffd9e8;   --pastel-pink-border:#ffc0dd;   --pastel-pink-fg:#3a0e20;
+      --pastel-green-bg:#e6f7e6;  --pastel-green-border:#c9ebc9;  --pastel-green-fg:#0f2a0f;
+
+      /* Animated selection ring (uses border tones) */
+      --ring-yellow: var(--pastel-yellow-border);
+      --ring-green:  var(--pastel-green-border);
+      --ring-blue:   var(--pastel-blue-border);
+      --ring-pink:   var(--pastel-pink-border);
+
+      /* Buttons */
+      --btn-ready-bg:#111; --btn-ready-fg:#fff;
+
+      /* Selected ring thickness */
+      --sel-ring:3px;
     }
 
     html,body{height:100%}
@@ -43,7 +63,7 @@
     button:disabled{ opacity:.5; cursor:not-allowed }
     .actions{ display:flex; justify-content:center; align-items:center; gap:8px; margin-top:12px }
     .help-btn, .check-btn{ padding:10px 16px }
-    .check-btn.ready{ background:#111; border-color:#111; color:#fff }
+    .check-btn.ready{ background:var(--btn-ready-bg); border-color:var(--btn-ready-bg); color:var(--btn-ready-fg) }
 
     /* Grid & tiles */
     .grid{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; max-width:1200px; margin:0 auto }
@@ -57,13 +77,18 @@
     .tile:focus-visible{ outline:2px solid var(--focus); outline-offset:2px }
     .tile.solved{ opacity:.95 }
 
-    /* Selected tiles: animated pastel border ring */
-    :root{ --sel-ring:3px }
+    /* Selected tiles: animated pastel border ring (inner fill equals card bg) */
     .tile.sel{
       border:var(--sel-ring) solid transparent; border-radius:14px;
       background:
-        linear-gradient(#fff,#fff) padding-box,
-        linear-gradient(90deg,#FFE78A 0%,#C9EBC9 25%,#CFE5FF 50%,#FFC3D6 75%,#FFE78A 100%) border-box;
+        linear-gradient(var(--card),var(--card)) padding-box,
+        linear-gradient(90deg,
+          var(--ring-yellow) 0%,
+          var(--ring-green)  25%,
+          var(--ring-blue)   50%,
+          var(--ring-pink)   75%,
+          var(--ring-yellow) 100%
+        ) border-box;
       background-size:100% 100%, 300% 100%;
       background-position:0 0, 0% 50%;
       animation:selPastelFlow 6s linear infinite;
@@ -77,13 +102,13 @@
     .solved-title{ font-weight:700; font-size:14px; letter-spacing:.2px; margin:0 }
     .solved-words-line{ font-weight:500; font-size:14px; opacity:.95 }
 
-    /* Pastel palette for solved groups */
-    .tile.solved.solved-group.p-blue   { background:#e8f2ff !important; border-color:#cfe5ff !important; color:#0f253a !important }
-    .tile.solved.solved-group.p-yellow { background:#fff7cc !important; border-color:#ffe78a !important; color:#3a3200 !important }
-    .tile.solved.solved-group.p-pink   { background:#ffe0ea !important; border-color:#ffc3d6 !important; color:#3a0e20 !important }
-    .tile.solved.solved-group.p-green  { background:#e6f7e6 !important; border-color:#c9ebc9 !important; color:#0f2a0f !important }
+    /* Pastel palette for solved groups (using variables) */
+    .tile.solved.solved-group.p-blue   { background:var(--pastel-blue-bg)!important;   border-color:var(--pastel-blue-border)!important;   color:var(--pastel-blue-fg)!important }
+    .tile.solved.solved-group.p-yellow { background:var(--pastel-yellow-bg)!important; border-color:var(--pastel-yellow-border)!important; color:var(--pastel-yellow-fg)!important }
+    .tile.solved.solved-group.p-pink   { background:var(--pastel-pink-bg)!important;   border-color:var(--pastel-pink-border)!important;   color:var(--pastel-pink-fg)!important }
+    .tile.solved.solved-group.p-green  { background:var(--pastel-green-bg)!important;  border-color:var(--pastel-green-border)!important;  color:var(--pastel-green-fg)!important }
 
-    /* Optional: compact solved chips (hidden by default) */
+    /* Optional: compact solved chips (not used by default) */
     .solved-list{ display:none }
 
     /* Accessibility helpers */
@@ -246,8 +271,11 @@
     function clearSelectionClasses(){ $$('.tile.sel').forEach(n => n.classList.remove('sel')); }
     function updateCheckUI(){
       const ready = selected.length === 4;
-      btnCheck.classList.toggle('ready', ready);
-      btnCheck.setAttribute('aria-disabled', ready ? 'false' : 'true');
+      const btnCheck = $('#btn-check');
+      if (btnCheck){
+        btnCheck.classList.toggle('ready', ready);
+        btnCheck.setAttribute('aria-disabled', ready ? 'false' : 'true');
+      }
     }
 
     function toggleWord(el, word){
@@ -333,7 +361,6 @@
         btnHelp.addEventListener('click', handleHelp);
       }catch(e){
         console.error(e);
-        // optionally show a small inline error somewhere if you add an element for it
       }
     }
 
