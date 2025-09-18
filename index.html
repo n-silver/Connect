@@ -286,234 +286,167 @@
   <!-- No embedded JSON. The app fetches /puzzles/manifest.json and /puzzles/<date>.json -->
 
   <script>
-  (function () {
-    // ===== Helpers =====
-    const $ = (sel, root = document) => root.querySelector(sel);
-    const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
-    const shuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
+ <!-- No embedded JSON. The app fetches /puzzles/manifest.json and /puzzles/<date>.json -->
+<script>
+(function () {
+  /* ========= Helpers ========= */
+  const $  = (sel, root = document) => root.querySelector(sel);
+  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+  const shuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [arr[i],arr[j]] = [arr[j],arr[i]]; } return arr; };
+  const PASTELS = ['p-blue','p-yellow','p-pink','p-green'];
 
-    const PASTELS = ['p-blue','p-yellow','p-pink','p-green'];
+  /* ========= Elements ========= */
+  const sel        = $('#puzzle-select');
+  const grid       = $('#grid');
+  const solvedList = $('#solved');
+  const btnCheck   = $('#btn-check');
+  const btnHelp    = $('#btn-help');
+  const msg        = $('#msg');
 
+  /* ========= State ========= */
+  let manifest = [];                 // dates newest-first
+  const puzzleCache = new Map();     // date -> puzzle
+  let currentDate = null;
+  let selected = [];
+  let solvedGroups = [];
+  let layout = [];
+  let stagedHelp = null;             // { group, hinted:Set<string>, color }
 
-  // ---- UK date helper: returns YYYY-MM-DD in Europe/London
+  /* ========= Fit text ========= */
+  const BASE_SIZE = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tile-font')) || 14;
+  const MIN_SIZE  = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tile-font-min')) || 10;
+  function fits(el){ return el.scrollWidth <= el.clientWidth && el.scrollHeight <= el.clientHeight; }
+  function fitText(el){
+    el.style.fontSize = BASE_SIZE + 'px';
+    if (fits(el)) return;
+    let size = BASE_SIZE;
+    while (size > MIN_SIZE) {
+      size -= 1;
+      el.style.fontSize = size + 'px';
+      if (fits(el)) break;
+    }
+  }
+  function fitAllTiles(){ [...$$('.tile'), ...$$('[data-fit]')].forEach(fitText); }
+  const ro = new ResizeObserver(() => fitAllTiles());
+
+  /* ========= UK date gating ========= */
   function todayUK() {
     const parts = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit'
+      timeZone: 'Europe/London', year:'numeric', month:'2-digit', day:'2-digit'
     }).formatToParts(new Date());
     const y = parts.find(p => p.type === 'year').value;
     const m = parts.find(p => p.type === 'month').value;
     const d = parts.find(p => p.type === 'day').value;
     return `${y}-${m}-${d}`;
   }
-
-  // Optional: allow preview via URL (e.g., ?preview=1)
   const PREVIEW_MODE = new URLSearchParams(location.search).has('preview');
 
   async function loadEligibleDates() {
     const res = await fetch('puzzles/manifest.json', { cache: 'no-store' });
-    const manifest = await res.json(); // array of ISO dates, newest-first
-    if (PREVIEW_MODE) return manifest;
-
+    const all = await res.json(); // newest-first
+    if (PREVIEW_MODE) return all;
     const cutoff = todayUK();
-    const eligible = manifest.filter(d => d <= cutoff);
-    // Fallback: if nothing eligible (first run), just return whatever is there
-    return eligible.length ? eligible : manifest;
+    const eligible = all.filter(d => d <= cutoff);
+    return eligible.length ? eligible : all;
   }
 
-  async function fetchPuzzleByDate(dateISO) {
+  async function fetchPuzzle(dateISO) {
+    if (puzzleCache.has(dateISO)) return puzzleCache.get(dateISO);
     const res = await fetch(`puzzles/${dateISO}.json`, { cache: 'no-store' });
     if (!res.ok) throw new Error(`Could not load puzzle for ${dateISO}`);
-    return await res.json();
+    const data = await res.json();
+    puzzleCache.set(dateISO, data);
+    return data;
   }
 
   async function populateSelectWithDates(dates) {
-    const sel = document.getElementById('puzzle-select');
     sel.innerHTML = '';
-    dates.forEach(d => {
+    for (const d of dates) {
       const opt = document.createElement('option');
       opt.value = d;
       opt.textContent = d;
       sel.appendChild(opt);
-    });
+    }
   }
 
-  // Glue: initialize dropdown + default puzzle (newest eligible)
+  /* ========= Single source of truth to display a date ========= */
+  async function applyDate(dateISO) {
+    const pj = await fetchPuzzle(dateISO);
+
+    // Reset per-puzzle state
+    currentDate   = dateISO;
+    selected      = [];
+    solvedGroups  = [];
+    layout        = [];
+    stagedHelp    = null;
+
+    // Expose for existing code paths that rely on globals
+    window.puzzles      = [pj];
+    window.currentIndex = 0;
+    window.selected     = selected;
+    window.solvedGroups = solvedGroups;
+    window.layout       = layout;
+
+    // Render via your existing flow
+    if (typeof startPuzzle === 'function') startPuzzle();
+  }
+
+  /* ========= Boot: only load newest eligible (≤ today UK) ========= */
   async function bootFromManifest() {
-    const dates = await loadEligibleDates();
-    await populateSelectWithDates(dates);
+    try {
+      manifest = await loadEligibleDates();          // filtered list
+      await populateSelectWithDates(manifest);
 
-    const sel = document.getElementById('puzzle-select');
-    const defaultDate = dates[0]; // newest eligible
-    sel.value = defaultDate;
+      const defaultDate = manifest[0];               // newest eligible
+      sel.value = defaultDate;
 
-    // Load that puzzle into your existing state/renderer
-    const p = await fetchPuzzleByDate(defaultDate);
-    // If your app still expects `puzzles` array or `startPuzzle()`, adapt here:
-    // Example: replace your payload/puzzles/selection with this one puzzle:
-    window.__currentManifestDates = dates; // (optional) keep if you need later
-    window.__currentPuzzleDate = defaultDate;
+      // Force correct puzzle immediately (prevents “tomorrow” on first paint)
+      await applyDate(defaultDate);
 
-    // If your code used a global `puzzles` array:
-    // puzzles = [p]; currentIndex = 0; startPuzzle();
-
-    // If your code has a "load puzzle JSON then render" function, call it here:
-    // e.g., applyPuzzle(p)
-    if (typeof startPuzzleFromJSON === 'function') {
-      startPuzzleFromJSON(p); // your own hook if you have it
-    } else if (typeof window.applyPuzzle === 'function') {
-      window.applyPuzzle(p);
-    } else {
-      // Minimal inline fallback: if earlier you had `puzzles[]` and `startPuzzle()`:
-      window.puzzles = [p];
-      window.currentIndex = 0;
-      if (typeof startPuzzle === 'function') startPuzzle();
+      // Keep using the same path on user change
+      sel.addEventListener('change', async () => {
+        await applyDate(sel.value);
+      });
+    } catch (e) {
+      console.error(e);
+      if (msg) msg.textContent = 'Failed to load puzzles.';
     }
-
-    // Change handler for user-initiated date switches (still only eligible dates)
-    sel.addEventListener('change', async () => {
-      const date = sel.value;
-      const pj = await fetchPuzzleByDate(date);
-      window.__currentPuzzleDate = date;
-      // same render hook as above
-      if (typeof startPuzzleFromJSON === 'function') {
-        startPuzzleFromJSON(pj);
-      } else if (typeof window.applyPuzzle === 'function') {
-        window.applyPuzzle(pj);
-      } else {
-        window.puzzles = [pj];
-        window.currentIndex = 0;
-        if (typeof startPuzzle === 'function') startPuzzle();
-      }
-    });
   }
 
-  // Call this instead of your old boot that auto-picked "latest"
+  /* ========= Misc UI helpers you already had ========= */
+  function wordsOfSolved() { return solvedGroups.flatMap(g => g.words); }
+  function isSolvedWord(w) { return solvedGroups.some(g => g.words.includes(w)); }
+  function buildInitialLayout(p) {
+    const words = p.categories.flatMap(c => c.words);
+    shuffle(words);
+    layout = words;
+  }
+  function rebuildLayoutSolvedFirst() {
+    const top = []; const seen = new Set();
+    for (const g of solvedGroups) for (const w of g.words) if (!seen.has(w)) { top.push(w); seen.add(w); }
+    const rest = layout.filter(w => !seen.has(w));
+    layout = [...top, ...rest];
+  }
+  function colorClassForWord(w) {
+    for (let i = 0; i < solvedGroups.length; i++) {
+      if (solvedGroups[i].words.includes(w)) return PASTELS[i] || PASTELS[PASTELS.length - 1];
+    }
+    return '';
+  }
+  function updateCheckUI() {
+    const ready = selected.length === 4;
+    btnCheck.classList.toggle('ready', ready);
+    btnCheck.setAttribute('aria-disabled', ready ? 'false' : 'true');
+  }
+
+  /* ========= Start the app (and ONLY this boot) ========= */
   document.addEventListener('DOMContentLoaded', () => {
-    bootFromManifest().catch(err => {
-      console.error(err);
-      const msg = document.getElementById('msg');
-      if (msg) msg.textContent = 'Failed to load puzzles.';
-    });
+    // IMPORTANT: do NOT call any old boot like loadEmbedded()/startPuzzle() here.
+    bootFromManifest();
   });
+})();
+</script>
 
-    
-    // State
-    let manifest = [];            // ['2025-09-13', '2025-09-12', ...] newest first
-    let puzzleCache = new Map();  // date -> { date, categories }
-    let currentDate = null;
-    let selected = [];
-    let solvedGroups = [];
-    let layout = [];
-    // Two-step Help state: when set, we have a staged group with 2 hinted tiles
-    let stagedHelp = null; // { group, hinted: Set<string>, color: string }
-
-
-    // Elements
-    const sel = $('#puzzle-select');
-    const grid = $('#grid');
-    const solvedList = $('#solved');
-    const btnCheck = $('#btn-check');
-    const btnHelp = $('#btn-help');
-    const msg = $('#msg');
-
-    // Font-fit helpers
-    const BASE_SIZE = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tile-font')) || 14;
-    const MIN_SIZE  = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tile-font-min')) || 10;
-    function fits(el){ return el.scrollWidth <= el.clientWidth && el.scrollHeight <= el.clientHeight; }
-    function fitText(el){
-      el.style.fontSize = BASE_SIZE + 'px';
-      if (fits(el)) return;
-      let size = BASE_SIZE;
-      while (size > MIN_SIZE) {
-        size -= 1;
-        el.style.fontSize = size + 'px';
-        if (fits(el)) break;
-      }
-    }
-    function fitAllTiles(){ [...$$(".tile"), ...$$("[data-fit]")].forEach(fitText); }
-    const ro = new ResizeObserver(() => fitAllTiles());
-
-    // ===== Loading =====
-    async function fetchJSON(url){
-      const res = await fetch(url, { cache: 'no-store' });
-      if (!res.ok) throw new Error(res.status + ' ' + res.statusText);
-      return await res.json();
-    }
-
-    async function loadManifest() {
-      try {
-        manifest = await fetchJSON('/puzzles/manifest.json');
-        if (!Array.isArray(manifest) || !manifest.length) throw new Error('empty manifest');
-      } catch {
-        // fallback to latest.json only
-        try {
-          const latest = await fetchJSON('/puzzles/latest.json');
-          if (latest?.date) { manifest = [latest.date]; puzzleCache.set(latest.date, latest); }
-        } catch (e) {
-          console.error('Failed to load any puzzle data', e);
-          manifest = [];
-        }
-      }
-    }
-
-    async function loadPuzzle(date) {
-      if (puzzleCache.has(date)) return puzzleCache.get(date);
-      try {
-        const data = await fetchJSON(`/puzzles/${date}.json`);
-        puzzleCache.set(date, data);
-        return data;
-      } catch {
-        // fallback: latest
-        const data = await fetchJSON(`/puzzles/latest.json`);
-        puzzleCache.set(data.date, data);
-        return data;
-      }
-    }
-
-    function populateSelect() {
-      sel.innerHTML = '';
-      manifest.forEach((d) => {
-        const opt = document.createElement('option');
-        opt.value = d;
-        opt.textContent = d;
-        sel.appendChild(opt);
-      });
-      sel.addEventListener('change', async () => {
-        currentDate = sel.value;
-        await startPuzzle(); // reload for selected date
-      });
-    }
-
-    // ===== Layout helpers =====
-    function wordsOfSolved() { return solvedGroups.flatMap(g => g.words); }
-    function isSolvedWord(w) { return solvedGroups.some(g => g.words.includes(w)); }
-
-    function buildInitialLayout(p) {
-      const words = p.categories.flatMap(c => c.words);
-      shuffle(words);
-      layout = words;
-    }
-
-    function rebuildLayoutSolvedFirst() {
-      const top = [];
-      const seen = new Set();
-      for (const g of solvedGroups) for (const w of g.words) if (!seen.has(w)) { top.push(w); seen.add(w); }
-      const rest = layout.filter(w => !seen.has(w));
-      layout = [...top, ...rest];
-    }
-
-    function colorClassForWord(w) {
-      for (let i = 0; i < solvedGroups.length; i++) {
-        if (solvedGroups[i].words.includes(w)) return PASTELS[i] || PASTELS[PASTELS.length - 1];
-      }
-      return '';
-    }
-
-    function updateCheckUI() {
-  const ready = selected.length === 4;
-  btnCheck.classList.toggle('ready', ready);
-  btnCheck.setAttribute('aria-disabled', ready ? 'false' : 'true');
-}
 
 
     // ===== Render =====
@@ -706,6 +639,7 @@ function handleHelp() {
   </script>
 </body>
 </html>
+
 
 
 
