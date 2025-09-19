@@ -87,54 +87,64 @@
 
     .actions{ display:flex; justify-content:center; align-items:center; gap:8px; margin-top:12px }
     .help-btn, .check-btn{ padding:10px 16px }
-/* Fluid, gas-like gradient FILL when 4 tiles are selected */
+/* Gas-like, blending gradient FILL when 4 tiles are selected */
 .check-btn.ready{
-  border: 1px solid var(--border);         /* keep the light-grey outline */
+  border: 1px solid var(--border);      /* keep normal tile outline colour */
   border-radius: var(--radius-btn);
-  color: var(--btn-ready-fg);              /* usually #fff; change if you prefer darker text */
-  overflow: hidden;                        /* not strictly needed now, but harmless */
+  color: #111;                          /* dark text reads better on light pastels */
   background:
-    radial-gradient(45% 45% at 20% 30%, var(--ring-yellow) 0 60%, transparent 61%) no-repeat,
-    radial-gradient(45% 45% at 80% 25%, var(--ring-blue)   0 60%, transparent 61%) no-repeat,
-    radial-gradient(50% 50% at 30% 80%, var(--ring-green)  0 55%, transparent 60%) no-repeat,
-    radial-gradient(40% 40% at 75% 75%, var(--ring-pink)   0 60%, transparent 66%) no-repeat,
-    var(--card); /* base */
-  /* let each blob roam differently for a fluid feel */
+    radial-gradient(60% 60% at 20% 30%,
+      color-mix(in srgb, var(--ring-yellow) 85%, transparent) 0 40%,
+      color-mix(in srgb, var(--ring-yellow) 40%, transparent) 60%,
+      transparent 85%) no-repeat,
+    radial-gradient(55% 55% at 80% 25%,
+      color-mix(in srgb, var(--ring-blue) 85%, transparent) 0 40%,
+      color-mix(in srgb, var(--ring-blue) 40%, transparent) 60%,
+      transparent 85%) no-repeat,
+    radial-gradient(60% 60% at 30% 80%,
+      color-mix(in srgb, var(--ring-green) 85%, transparent) 0 40%,
+      color-mix(in srgb, var(--ring-green) 40%, transparent) 60%,
+      transparent 85%) no-repeat,
+    radial-gradient(55% 55% at 75% 75%,
+      color-mix(in srgb, var(--ring-pink) 85%, transparent) 0 40%,
+      color-mix(in srgb, var(--ring-pink) 40%, transparent) 60%,
+      transparent 85%) no-repeat,
+    var(--card);
+  background-blend-mode: screen, screen, screen, screen, normal;  /* <-- blending! */
   background-size:
-    200% 200%,
-    180% 180%,
     220% 220%,
-    210% 210%,
+    200% 200%,
+    240% 240%,
+    220% 220%,
     auto;
   background-position:
-    0%   50%,
+    0% 50%,
     100% 50%,
-    50%  100%,
-    50%  0%,
+    50% 100%,
+    50% 0%,
     0 0;
-  animation: checkGasDrift 18s ease-in-out infinite;
+  animation: checkGasDrift 24s ease-in-out infinite;
 }
 
-/* Multi-axis, out-of-phase drift of each blob */
 @keyframes checkGasDrift{
-  0% {
-    background-position:   0%  50%, 100%  50%,  50% 100%,  50%   0%, 0 0;
+  0%{
+    background-position:  0% 50%, 100% 50%,  50% 100%, 50%  0%, 0 0;
   }
   25%{
-    background-position:  40%  80%,  60%  20%,  20%  60%,  80%  40%, 0 0;
+    background-position: 35% 80%,  60% 20%,  20%  60%, 80% 40%, 0 0;
   }
   50%{
-    background-position: 100%  50%,   0%  50%,  50%   0%,  50% 100%, 0 0;
+    background-position:100% 50%,   0% 50%,  50%   0%, 50% 100%, 0 0;
   }
   75%{
-    background-position:  60%  20%,  20%  80%,  80%  40%,  40%  60%, 0 0;
+    background-position: 60% 20%,  20% 80%,  85%  40%, 40% 60%, 0 0;
   }
   100%{
-    background-position:   0%  50%, 100%  50%,  50% 100%,  50%   0%, 0 0;
+    background-position:  0% 50%, 100% 50%,  50% 100%, 50%  0%, 0 0;
   }
 }
 
-/* Reduced motion */
+/* Respect reduced motion */
 @media (prefers-reduced-motion: reduce){
   .check-btn.ready{ animation: none; }
 }
@@ -471,6 +481,7 @@ select { -webkit-appearance: none; background-clip: padding-box; overflow: hidde
   </script>
 </body>
 </html>
+
 
 
 
