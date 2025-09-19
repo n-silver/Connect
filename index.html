@@ -51,14 +51,14 @@
     /* Top bar with full-bleed divider */
     .topbar{
       display:flex; align-items:center; justify-content:space-between; gap:12px;
-      padding-bottom:20px; margin-bottom:16px; position:relative;
+      padding-bottom:15px; margin-bottom:16px; position:relative;
     }
     .topbar::after{
       content:""; position:absolute; left:50%; transform:translateX(-50%);
       bottom:-0.5px; width:100vw; height:1px; background:var(--border); pointer-events:none;
     }
     .title{ margin:10px 0; font-size:32px; font-weight:700; letter-spacing:.2px; text-transform:lowercase }
-    .date-slot select{ min-width:140px; white-space:nowrap }
+    .date-slot select{ min-width:110px; white-space:nowrap }
 
     /* Inputs and buttons (radius vars applied) */
     button{
@@ -420,6 +420,7 @@ select { -webkit-appearance: none; background-clip: padding-box; overflow: hidde
   </script>
 </body>
 </html>
+
 
 
 
