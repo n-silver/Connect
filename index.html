@@ -142,6 +142,25 @@
       :root{ --tile-font:13px; --tile-h:78px }
       .date-slot select{ min-width:160px }
     }
+
+  /* ---- Force a single radius everywhere ---- */
+:root { --radius: 6px; } /* ← tweak this number */
+
+button,
+.help-btn,
+.check-btn,
+select,
+.tile,
+.tile.sel,
+.solved-group {
+  border-radius: var(--radius) !important;
+}
+
+/* Helps some browsers apply rounding on <select> */
+select { -webkit-appearance: none; background-clip: padding-box; overflow: hidden; }
+
+
+    
   </style>
 </head>
 <body>
@@ -401,6 +420,7 @@
   </script>
 </body>
 </html>
+
 
 
 
