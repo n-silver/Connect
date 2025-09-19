@@ -87,30 +87,33 @@
 
     .actions{ display:flex; justify-content:center; align-items:center; gap:8px; margin-top:12px }
     .help-btn, .check-btn{ padding:10px 16px }
-/* Gas-like, blending gradient FILL when 4 tiles are selected */
+/* Gas-like, merging pastel FILL when 4 tiles are selected */
 .check-btn.ready{
-  border: 1px solid var(--border);      /* keep normal tile outline colour */
+  border: 1px solid var(--border);           /* keep normal outline */
   border-radius: var(--radius-btn);
-  color: #111;                          /* dark text reads better on light pastels */
+  color: #111;                                /* dark text reads well on light pastels */
   background:
+    /* Yellow blob */
     radial-gradient(60% 60% at 20% 30%,
-      color-mix(in srgb, var(--ring-yellow) 85%, transparent) 0 40%,
-      color-mix(in srgb, var(--ring-yellow) 40%, transparent) 60%,
-      transparent 85%) no-repeat,
+      rgba(255,231,138,0.85) 0%,
+      rgba(255,231,138,0.40) 45%,
+      rgba(255,231,138,0.00) 70%) no-repeat,
+    /* Blue blob */
     radial-gradient(55% 55% at 80% 25%,
-      color-mix(in srgb, var(--ring-blue) 85%, transparent) 0 40%,
-      color-mix(in srgb, var(--ring-blue) 40%, transparent) 60%,
-      transparent 85%) no-repeat,
+      rgba(207,229,255,0.85) 0%,
+      rgba(207,229,255,0.35) 45%,
+      rgba(207,229,255,0.00) 70%) no-repeat,
+    /* Green blob */
     radial-gradient(60% 60% at 30% 80%,
-      color-mix(in srgb, var(--ring-green) 85%, transparent) 0 40%,
-      color-mix(in srgb, var(--ring-green) 40%, transparent) 60%,
-      transparent 85%) no-repeat,
+      rgba(201,235,201,0.85) 0%,
+      rgba(201,235,201,0.40) 45%,
+      rgba(201,235,201,0.00) 70%) no-repeat,
+    /* Purple/pink blob (adjust to your current purple if needed) */
     radial-gradient(55% 55% at 75% 75%,
-      color-mix(in srgb, var(--ring-pink) 85%, transparent) 0 40%,
-      color-mix(in srgb, var(--ring-pink) 40%, transparent) 60%,
-      transparent 85%) no-repeat,
-    var(--card);
-  background-blend-mode: screen, screen, screen, screen, normal;  /* <-- blending! */
+      rgba(202,163,255,0.85) 0%,
+      rgba(202,163,255,0.35) 45%,
+      rgba(202,163,255,0.00) 70%) no-repeat,
+    var(--card); /* base */
   background-size:
     220% 220%,
     200% 200%,
@@ -124,23 +127,24 @@
     50% 0%,
     0 0;
   animation: checkGasDrift 24s ease-in-out infinite;
+  will-change: background-position;
 }
 
 @keyframes checkGasDrift{
   0%{
-    background-position:  0% 50%, 100% 50%,  50% 100%, 50%  0%, 0 0;
+    background-position:   0%  50%, 100%  50%,  50% 100%,  50%   0%, 0 0;
   }
   25%{
-    background-position: 35% 80%,  60% 20%,  20%  60%, 80% 40%, 0 0;
+    background-position:  35%  80%,  60%  20%,  20%  60%,  80%  40%, 0 0;
   }
   50%{
-    background-position:100% 50%,   0% 50%,  50%   0%, 50% 100%, 0 0;
+    background-position: 100%  50%,   0%  50%,  50%   0%,  50% 100%, 0 0;
   }
   75%{
-    background-position: 60% 20%,  20% 80%,  85%  40%, 40% 60%, 0 0;
+    background-position:  60%  20%,  20%  80%,  85%  40%,  40%  60%, 0 0;
   }
   100%{
-    background-position:  0% 50%, 100% 50%,  50% 100%, 50%  0%, 0 0;
+    background-position:   0%  50%, 100%  50%,  50% 100%,  50%   0%, 0 0;
   }
 }
 
@@ -481,6 +485,7 @@ select { -webkit-appearance: none; background-clip: padding-box; overflow: hidde
   </script>
 </body>
 </html>
+
 
 
 
