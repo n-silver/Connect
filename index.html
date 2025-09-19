@@ -99,7 +99,7 @@
     var(--ring-yellow) 100%
   );
   background-size: 400% 400%;        /* roam across both axes */
-  animation: btnPastelFluid 14s cubic-bezier(.4,0,.2,1) infinite;
+  animation: btnPastelFluid 7s cubic-bezier(.4,0,.2,1) infinite;
 }
 
 /* Fluid multi-axis loop (not just left→right) */
@@ -133,7 +133,7 @@
       border:var(--sel-ring) solid transparent; border-radius:var(--radius-tile); /* match .tile */
       background:
         linear-gradient(var(--card),var(--card)) padding-box,
-        linear-gradient(90deg,
+        linear-gradient(45deg,
           var(--ring-yellow) 0%,
           var(--ring-green)  25%,
           var(--ring-blue)   50%,
@@ -447,6 +447,7 @@ select { -webkit-appearance: none; background-clip: padding-box; overflow: hidde
   </script>
 </body>
 </html>
+
 
 
 
