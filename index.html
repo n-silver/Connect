@@ -87,10 +87,10 @@
 
     .actions{ display:flex; justify-content:center; align-items:center; gap:8px; margin-top:12px }
     .help-btn, .check-btn{ padding:10px 16px }
-/* Replace your existing .check-btn.ready rule with this */
+/* Gradient FILL when 4 tiles are selected — slow, fluid drift */
 .check-btn.ready{
-  border: 1px solid var(--border);              /* normal light grey outline */
-  color: var(--btn-ready-fg);                   /* stays readable (usually #fff) */
+  border: 1px solid var(--border);   /* keep the normal light-grey outline */
+  color: var(--btn-ready-fg);        /* typically #fff */
   background: linear-gradient(90deg,
     var(--ring-yellow) 0%,
     var(--ring-green)  25%,
@@ -98,18 +98,20 @@
     var(--ring-pink)   75%,
     var(--ring-yellow) 100%
   );
-  background-size: 300% 100%;
-  background-position: 0% 50%;
-  animation: btnPastelFill 6s linear infinite;
+  background-size: 400% 400%;        /* roam across both axes */
+  animation: btnPastelFluid 14s cubic-bezier(.4,0,.2,1) infinite;
 }
 
-/* same motion as before, just for the fill */
-@keyframes btnPastelFill{
+/* Fluid multi-axis loop (not just left→right) */
+@keyframes btnPastelFluid{
   0%   { background-position:   0% 50%; }
-  100% { background-position: 300% 50%; }
+  25%  { background-position:  50% 100%; }
+  50%  { background-position: 100% 50%; }
+  75%  { background-position:  50%   0%; }
+  100% { background-position:   0% 50%; }
 }
 
-/* optional: respect reduced motion */
+/* Respect reduced motion */
 @media (prefers-reduced-motion: reduce){
   .check-btn.ready{ animation: none; }
 }
@@ -445,6 +447,7 @@ select { -webkit-appearance: none; background-clip: padding-box; overflow: hidde
   </script>
 </body>
 </html>
+
 
 
 
