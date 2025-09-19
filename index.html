@@ -60,6 +60,30 @@
     .title{ margin:10px 0; font-size:32px; font-weight:700; letter-spacing:.2px; text-transform:lowercase }
     .date-slot select{ min-width:110px; white-space:nowrap }
 
+    :root{
+  /* controls logo height responsively */
+  --logo-h: clamp(28px, 6vw, 40px);
+}
+
+/* Brand/logo wrapper aligns with the date select */
+.topbar .brand{
+  display:flex;
+  align-items:center;
+  gap:8px; /* if you add text later */
+  text-decoration:none;
+}
+
+/* The image itself */
+.topbar .brand .logo{
+  display:block;
+  height: var(--logo-h);
+  width: auto;        /* keeps aspect ratio */
+}
+
+/* You can remove or keep .title styles.
+   If you keep them, they won't affect the image logo. */
+
+    
     /* Inputs and buttons (radius vars applied) */
     button{
       border:1px solid var(--border);
@@ -231,7 +255,17 @@ select { -webkit-appearance: none; background-clip: padding-box; overflow: hidde
 <body>
   <div class="wrap">
     <div class="topbar">
-      <h1 class="title">connect</h1>
+<a class="brand" href="./" aria-label="Connect home">
+  <img
+    class="logo"
+    src="logo.png"
+    srcset="logo.png 1x, logo@2x.png 2x"
+    alt="Connect"
+    decoding="async"
+    fetchpriority="high"
+  />
+  <span class="sr-only">connect</span>
+</a>
       <div class="date-slot">
         <label for="puzzle-select" class="sr-only">Choose puzzle</label>
         <select id="puzzle-select" aria-label="Choose puzzle"></select>
@@ -485,6 +519,7 @@ select { -webkit-appearance: none; background-clip: padding-box; overflow: hidde
   </script>
 </body>
 </html>
+
 
 
 
