@@ -87,33 +87,67 @@
 
     .actions{ display:flex; justify-content:center; align-items:center; gap:8px; margin-top:12px }
     .help-btn, .check-btn{ padding:10px 16px }
-/* Gradient FILL when 4 tiles are selected — slow, fluid drift */
+/* Fluid, gas-like gradient FILL when 4 tiles are selected */
 .check-btn.ready{
-  border: 1px solid var(--border);   /* keep the normal light-grey outline */
-  color: var(--btn-ready-fg);        /* typically #fff */
-  background: linear-gradient(90deg,
-    var(--ring-yellow) 0%,
-    var(--ring-green)  25%,
-    var(--ring-blue)   50%,
-    var(--ring-pink)   75%,
-    var(--ring-yellow) 100%
-  );
-  background-size: 400% 400%;        /* roam across both axes */
-  animation: btnPastelFluid 6s cubic-bezier(.4,0,.2,1) infinite;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;                 /* keep layers contained */
+  border: 1px solid var(--border);    /* normal light-grey outline */
+  color: var(--btn-ready-fg);         /* typically #fff */
+  background: var(--card);            /* base under the blobs */
 }
 
-/* Fluid multi-axis loop (not just left→right) */
-@keyframes btnPastelFluid{
-  0%   { background-position:   0% 50%; }
-  25%  { background-position:  50% 100%; }
-  50%  { background-position: 100% 50%; }
-  75%  { background-position:  50%   0%; }
-  100% { background-position:   0% 50%; }
+/* Back layer of drifting blobs */
+.check-btn.ready::before{
+  content: "";
+  position: absolute;
+  inset: -40%;
+  background:
+    radial-gradient(35% 35% at 20% 30%, var(--ring-yellow) 0 60%, transparent 65%),
+    radial-gradient(35% 35% at 80% 25%, var(--ring-blue)   0 60%, transparent 65%),
+    radial-gradient(40% 40% at 30% 80%, var(--ring-green)  0 55%, transparent 62%),
+    radial-gradient(30% 30% at 75% 75%, var(--ring-pink)   0 60%, transparent 66%);
+  filter: blur(12px) saturate(1.1);
+  opacity: .9;
+  z-index: 0;
+  animation: blobs1 22s ease-in-out infinite;
 }
 
-/* Respect reduced motion */
+/* Front layer, different blobs & motion for more fluidity */
+.check-btn.ready::after{
+  content: "";
+  position: absolute;
+  inset: -50%;
+  background:
+    radial-gradient(30% 30% at 15% 60%, var(--ring-pink)   0 55%, transparent 65%),
+    radial-gradient(35% 35% at 60% 20%, var(--ring-yellow) 0 55%, transparent 63%),
+    radial-gradient(32% 32% at 85% 65%, var(--ring-blue)   0 55%, transparent 63%);
+  filter: blur(16px) saturate(1.05);
+  opacity: .7;
+  z-index: 0;
+  mix-blend-mode: screen;   /* prettier blending; remove if you prefer flatter look */
+  animation: blobs2 28s ease-in-out infinite;
+}
+
+/* Multi-axis, out-of-phase motion */
+@keyframes blobs1{
+  0%   { transform: translate(-3%, -2%) rotate(0deg)   scale(1); }
+  25%  { transform: translate( 4%, -6%) rotate(20deg)  scale(1.05); }
+  50%  { transform: translate( 3%,  5%) rotate(45deg)  scale(1.02); }
+  75%  { transform: translate(-4%,  6%) rotate(20deg)  scale(1.08); }
+  100% { transform: translate(-3%, -2%) rotate(0deg)   scale(1); }
+}
+@keyframes blobs2{
+  0%   { transform: translate( 3%,  4%) rotate(0deg)   scale(1.10); }
+  33%  { transform: translate(-5%,  2%) rotate(-25deg) scale(1.05); }
+  66%  { transform: translate( 2%, -6%) rotate(30deg)  scale(1.12); }
+  100% { transform: translate( 3%,  4%) rotate(0deg)   scale(1.10); }
+}
+
+/* Reduced motion */
 @media (prefers-reduced-motion: reduce){
-  .check-btn.ready{ animation: none; }
+  .check-btn.ready::before,
+  .check-btn.ready::after{ animation: none; }
 }
 
     /* Grid & tiles */
@@ -447,6 +481,7 @@ select { -webkit-appearance: none; background-clip: padding-box; overflow: hidde
   </script>
 </body>
 </html>
+
 
 
 
