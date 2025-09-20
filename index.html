@@ -214,67 +214,84 @@
       .date-slot select{ min-width:160px }
     }
 
-/* Thickness of the overlaid hint trace ring */
+/* ---- thickness of the gradient border & overlay ring (must match) ---- */
 :root{
-  --hint-ring: 2px; /* match your tile border thickness (or 3px if you prefer bolder) */
+  --hint-ring: 2px;                 /* set to the same thickness you want on the hint border */
 }
 
-/* Ensure hinted tiles can host the overlay layer */
-.tile.hint{ position: relative; }
+/* Give hinted tiles the animated gradient border (Option A) */
+.tile.hint{
+  position: relative;
+  /* paint the border via layered backgrounds */
+  border: var(--hint-ring) solid transparent;
+  border-radius: var(--radius-tile);
+  background:
+    linear-gradient(var(--card), var(--card)) padding-box,
+    linear-gradient(120deg,
+      var(--ring-yellow) 0%,
+      var(--ring-green)  25%,
+      var(--ring-blue)   50%,
+      var(--ring-pink)   75%,
+      var(--ring-yellow) 100%
+    ) border-box;
+  background-size: 100% 100%, 320% 320%;
+  background-position: 0 0, 0% 50%;
+  animation: tileBorderFlow 16s ease-in-out infinite; /* you already have this for .tile.sel */
+}
 
-/* Keep the hint overlay even when selected.
-   If you want it hidden on selection, uncomment the line below. */
-/* .tile.hint.sel::after{ display:none; } */
+/* If a hinted tile is actually selected, your .tile.sel rules will layer on top naturally.
+   If you prefer to hide the hint overlay while selected, uncomment:
+   .tile.hint.sel::after{ display:none; }
+*/
 
-/* --- Overlay ring that draws ONLY in the border area --- */
+/* ------------ OVERLAY: white arc trace in the border ONLY ------------- */
 @property --arc {
   syntax: "<angle>";
   inherits: false;
   initial-value: 0deg;
 }
 
-/* The overlay sits on top and paints a white arc in the border ring only. */
 .tile.hint::after{
   content: "";
   position: absolute;
   inset: 0;
-  border-radius: var(--radius-tile);
   pointer-events: none;
+  border-radius: var(--radius-tile);
 
-  /* This makes the element have a border area we can paint into */
-  border: var(--hint-ring) solid transparent;
+  /* Make the pseudo-element have a border ring area the same thickness */
+  padding: var(--hint-ring);
 
-  /* Layer 1 (top): the white arc, starting at top-middle (from -90deg), length = --arc
-     Layer 2: a transparent padding fill to keep the interior untouched */
+  /* Mask out the interior so we only ever draw in the border ring */
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+          mask-composite: exclude;
+
+  /* White arc, starting at top middle (from -90deg), length = --arc */
   background:
     conic-gradient(from -90deg,
       rgba(255,255,255,0.98) 0deg var(--arc),
-      transparent            var(--arc) 360deg) border-box,
-    linear-gradient(transparent, transparent)     padding-box;
+      transparent            var(--arc) 1turn);
 
-  /* Make sure each layer clips to correct box */
-  background-clip: border-box, padding-box;
-
-  /* Animate the arc length to create the “trace → catch-up → pause” cycle */
-  animation: hintTraceGrow 2.6s ease-in-out infinite;
+  animation: hintArcCycle 2.8s ease-in-out infinite;
 }
 
-/* Motion:
-   - 0%→72%: arc grows from 0 → 270deg (3/4 around), starting at top center
-   - 72%→90%: arc completes 270 → 360deg (tail catches up)
-   - 90%→100%: full white ring (pause), then resets to 0deg next loop */
-@keyframes hintTraceGrow{
+/* Grow to 3/4, then to full, then pause (Windows-spinner vibe) */
+@keyframes hintArcCycle{
   0%   { --arc: 0deg;   }
-  72%  { --arc: 270deg; }
-  90%  { --arc: 360deg; }
-  100% { --arc: 360deg; }
+  70%  { --arc: 270deg; }   /* head reaches 3/4 */
+  88%  { --arc: 360deg; }   /* tail catches up */
+  100% { --arc: 360deg; }   /* brief pause, then resets */
 }
 
-/* Reduced motion accessibility */
+/* Optional: slow the gradient border on hinted tiles separately */
 @media (prefers-reduced-motion: reduce){
-  .tile.hint::after{ animation: none; }
+  .tile.hint, .tile.hint::after{ animation: none; }
 }
-
 
 
     
@@ -565,6 +582,7 @@ select { -webkit-appearance: none; background-clip: padding-box; overflow: hidde
   </script>
 </body>
 </html>
+
 
 
 
