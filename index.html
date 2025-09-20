@@ -5,7 +5,6 @@
   <title>Connect</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="format-detection" content="telephone=no" />
-  <!-- Montserrat font -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet" />
@@ -14,131 +13,77 @@
     :root{
       /* Base UI */
       --bg:#fafafa; --fg:#111; --muted:#6b7280; --card:#fff; --border:#e5e7eb; --focus:#0b57d0;
-      --tile-font:14px; --tile-font-min:5px; --tile-h:80px;
+      --tile-font:14px; --tile-font-min:10px; --tile-h:70px;
 
-      /* Corner radius (master + per-component aliases) */
-      --radius:8px;
+      /* Radius (one knob to change roundness everywhere) */
+      --radius:6px;
       --radius-btn:var(--radius);
       --radius-input:var(--radius);
       --radius-tile:var(--radius);
       --radius-solved:var(--radius);
 
-      /* Pastel palette */
-      --pastel-blue-bg:#e7f9ff;   --pastel-blue-border:#b8ecff;   --pastel-blue-fg:#0e2433;
+      /* Pastel palette (borders & solved backgrounds) */
+      --pastel-blue-bg:#e7f9ff;   --pastel-blue-border:#b8ecff;   --pastel-blue-fg:#0e2433;  /* brighter aqua-ish blue */
       --pastel-yellow-bg:#fff7cc; --pastel-yellow-border:#ffe78a; --pastel-yellow-fg:#3a3200;
-      --pastel-pink-bg:#f4e6ff;   --pastel-pink-border:#dac6ff;   --pastel-pink-fg:#291d3a;
+      --pastel-pink-bg:#f4e6ff;   --pastel-pink-border:#dac6ff;   --pastel-pink-fg:#291d3a;  /* light lavender */
       --pastel-green-bg:#e6f7e6;  --pastel-green-border:#c9ebc9;  --pastel-green-fg:#0f2a0f;
 
-      /* Animated selection ring (uses border tones) */
+      /* Animated selection / hint border uses these */
       --ring-yellow: var(--pastel-yellow-border);
       --ring-green:  var(--pastel-green-border);
       --ring-blue:   var(--pastel-blue-border);
       --ring-pink:   var(--pastel-pink-border);
 
       /* Buttons */
-      --btn-ready-bg:#111; --btn-ready-fg:#fff;
+      --btn-ready-fg:#111; /* dark text on pastel fills */
 
-      /* Selected ring thickness */
-      --sel-ring:3px;
+      /* Animated borders thickness */
+      --sel-ring:2px;  /* selected */
+      --hint-ring:2px; /* hinted (must match overlay stroke) */
     }
 
     html,body{height:100%}
     *,*::before,*::after{box-sizing:border-box; -webkit-text-fill-color:currentColor}
     body{margin:0; font-family:'Montserrat',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:var(--fg)}
+    .wrap{max-width:1200px; margin:0 auto; padding:16px}
 
-    .wrap{max-width:1200px; margin:0 auto; padding:12px}
-
-    /* Top bar with full-bleed divider */
+    /* Topbar */
     .topbar{
       display:flex; align-items:center; justify-content:space-between; gap:12px;
-      padding-bottom:15px; margin-bottom:16px; position:relative;
+      padding-bottom:8px; margin-bottom:16px; position:relative;
     }
     .topbar::after{
       content:""; position:absolute; left:50%; transform:translateX(-50%);
-      bottom:-0.5px; width:100vw; height:1px; background:var(--border); pointer-events:none;
+      bottom:-0.5px; width:100vw; height:1px; background:var(--border);
     }
     .title{ margin:10px 0; font-size:32px; font-weight:700; letter-spacing:.2px; text-transform:lowercase }
-    .date-slot select{ min-width:110px; white-space:nowrap }
-
-    :root{
-  /* controls logo height responsively */
-  --logo-h: clamp(28px, 6vw, 40px);
-}
-
-/* Brand/logo wrapper aligns with the date select */
-.topbar .brand{
-  display:flex;
-  align-items:center;
-  gap:8px; /* if you add text later */
-  text-decoration:none;
-}
-
-/* The image itself */
-.topbar .brand .logo{
-  display:block;
-  height: var(--logo-h);
-  width: auto;        /* keeps aspect ratio */
-}
-
-/* You can remove or keep .title styles.
-   If you keep them, they won't affect the image logo. */
-
-    
-    /* Inputs and buttons (radius vars applied) */
-    button{
-      border:1px solid var(--border);
-      background:var(--card);
-      color:var(--fg);
-      border-radius:var(--radius-btn);
-      padding:8px 10px;
-      font-size:14px;
-      font-weight:700;
-      cursor:pointer;
-      appearance:none;
-    }
-    button:disabled{ opacity:.5; cursor:not-allowed }
-
-    select{
-      border:1px solid var(--border);
-      background:var(--card);
-      color:var(--fg);
-      border-radius:var(--radius-input);
-      padding:8px 10px;
-      font-size:14px;
-      cursor:pointer;
-      appearance:none;
+    .date-slot select{
+      min-width:140px; border:1px solid var(--border); background:var(--card); color:var(--fg);
+      border-radius:var(--radius-input); padding:8px 10px; font-size:14px; cursor:pointer; appearance:none;
     }
 
+    /* Actions */
     .actions{ display:flex; justify-content:center; align-items:center; gap:8px; margin-top:12px }
-    .help-btn, .check-btn{ padding:10px 16px }
-/* Clear, flowing gradient FILL (no blobs, no muddiness) */
-.check-btn.ready{
-  border: 1px solid var(--border);
-  border-radius: var(--radius-btn);
-  color: #fff; /* dark text reads well on pastels */
-  background: linear-gradient(120deg,
-    var(--ring-yellow) 0%,
-    var(--ring-green)  25%,
-    var(--ring-blue)   50%,
-    var(--ring-pink)   75%,
-    var(--ring-yellow) 100%
-  );
-  background-size: 320% 320%;
-  animation: btnFlow 6s ease-in-out infinite;
-}
-@keyframes btnFlow{
-  0%   { background-position:   0% 50%; }
-  50%  { background-position: 100% 50%; }
-  100% { background-position:   0% 50%; }
-}
-@media (prefers-reduced-motion: reduce){
-  .check-btn.ready{ animation: none; }
-}
+    button{
+      border:1px solid var(--border); background:var(--card); color:var(--fg);
+      border-radius:var(--radius-btn); padding:10px 16px; font-size:14px; font-weight:700; cursor:pointer;
+    }
+    .check-btn.ready{
+      border:1px solid var(--border);
+      color: var(--btn-ready-fg);
+      background: linear-gradient(120deg,
+        var(--ring-yellow) 0%,
+        var(--ring-green)  25%,
+        var(--ring-blue)   50%,
+        var(--ring-pink)   75%,
+        var(--ring-yellow) 100%
+      );
+      background-size: 320% 320%;
+      animation: btnFlow 16s ease-in-out infinite;
+    }
+    @keyframes btnFlow{ 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
 
-
-
-
-    /* Grid & tiles */
+    /* Grid */
     .grid{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; max-width:1200px; margin:0 auto }
     .tile{
       height:var(--tile-h); border:1px solid var(--border); border-radius:var(--radius-tile); background:var(--card);
@@ -148,59 +93,38 @@
       color:var(--fg); user-select:none;
     }
     .tile:focus-visible{ outline:2px solid var(--focus); outline-offset:2px }
-    .tile.solved{ opacity:.95 }
 
-    /* Selected tiles: animated pastel border ring */
-    /* Animated flowing GRADIENT BORDER on selected tiles (Option A style) */
-:root { --sel-ring: 3px; } /* tweak thickness */
+    /* --- Animated flowing GRADIENT BORDER (Option A) for selected AND hinted tiles --- */
+    .tile.sel,
+    .tile.hint{
+      border: var(--sel-ring) solid transparent;  /* use --hint-ring for .hint; we equalize below */
+      border-radius: var(--radius-tile);
+      background:
+        linear-gradient(var(--card), var(--card)) padding-box,
+        linear-gradient(120deg,
+          var(--ring-yellow) 0%,
+          var(--ring-green)  25%,
+          var(--ring-blue)   50%,
+          var(--ring-pink)   75%,
+          var(--ring-yellow) 100%
+        ) border-box;
+      background-size: 100% 100%, 320% 320%;
+      background-position: 0 0, 0% 50%;
+      animation: tileBorderFlow 16s ease-in-out infinite;
+    }
+    /* ensure hinted border thickness matches overlay stroke */
+    .tile.hint{ border-width: var(--hint-ring); }
+    @keyframes tileBorderFlow{ 0%{background-position:0 0, 0% 50%} 50%{background-position:0 0, 100% 50%} 100%{background-position:0 0, 0% 50%} }
 
-.tile.sel{
-  /* paint the border via layered backgrounds */
-  border: var(--sel-ring) solid transparent;
-  border-radius: var(--radius-tile);
-
-  /* layer 1: inner fill (stays your card/white)
-     layer 2: animated gradient for the border */
-  background:
-    linear-gradient(var(--card), var(--card)) padding-box,
-    linear-gradient(120deg,
-      var(--ring-yellow) 0%,
-      var(--ring-green)  25%,
-      var(--ring-blue)   50%,
-      var(--ring-pink)   75%,
-      var(--ring-yellow) 100%
-    ) border-box;
-
-  /* animate just the border layer */
-  background-size: 100% 100%, 320% 320%;
-  background-position: 0 0, 0% 50%;
-  animation: tileBorderFlow 6s ease-in-out infinite;
-
-  /* keep your subtle shadow etc. */
-  box-shadow: 0 1px 2px rgba(0,0,0,.05);
-}
-
-@keyframes tileBorderFlow{
-  0%   { background-position: 0 0,   0% 50%; }
-  50%  { background-position: 0 0, 100% 50%; }
-  100% { background-position: 0 0,   0% 50%; }
-}
-
-/* Respect reduced motion */
-@media (prefers-reduced-motion: reduce){
-  .tile.sel{ animation: none; }
-}
-
-
-    /* Solved group (full-width tile) */
+    /* Solved group (full-width) */
     .solved-group{
       grid-column:1 / -1; padding:12px; border-radius:var(--radius-solved);
       text-align:center; display:flex; flex-direction:column; gap:4px
     }
     .solved-title{ font-weight:700; font-size:14px; letter-spacing:.2px; margin:0 }
-    .solved-words-line{ font-weight:500; font-size:12px; opacity:.95 }
+    .solved-words-line{ font-weight:500; font-size:14px; opacity:.95 }
 
-    /* Pastel palette for solved groups */
+    /* Pastel fills for solved groups */
     .tile.solved.solved-group.p-blue   { background:var(--pastel-blue-bg)!important;   border-color:var(--pastel-blue-border)!important;   color:var(--pastel-blue-fg)!important }
     .tile.solved.solved-group.p-yellow { background:var(--pastel-yellow-bg)!important; border-color:var(--pastel-yellow-border)!important; color:var(--pastel-yellow-fg)!important }
     .tile.solved.solved-group.p-pink   { background:var(--pastel-pink-bg)!important;   border-color:var(--pastel-pink-border)!important;   color:var(--pastel-pink-fg)!important }
@@ -210,110 +134,21 @@
     .sr-only{ position:absolute!important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0 }
 
     @media (max-width:360px){
-      :root{ --tile-font:13px; --tile-h:80px }
+      :root{ --tile-font:13px; --tile-h:78px }
       .date-slot select{ min-width:160px }
     }
-
-/* Hinted tiles keep the animated gradient BORDER (same as your selected style) */
-:root { --hint-ring: 2px; } /* thickness of hint ring */
-
-.tile.hint{
-  position: relative;
-  border: var(--hint-ring) solid transparent;
-  border-radius: var(--radius-tile);
-  background:
-    linear-gradient(var(--card), var(--card)) padding-box,
-    linear-gradient(120deg,
-      var(--ring-yellow) 0%,
-      var(--ring-green)  25%,
-      var(--ring-blue)   50%,
-      var(--ring-pink)   75%,
-      var(--ring-yellow) 100%
-    ) border-box;
-  background-size: 100% 100%, 320% 320%;
-  background-position: 0 0, 0% 50%;
-  animation: tileBorderFlow 16s ease-in-out infinite; /* already used for selected tiles */
-}
-
-/* SVG overlay container (sits above border, but has no fill) */
-.tile.hint .hint-overlay{
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 2;
-  border-radius: inherit;
-}
-
-/* The animated arc path */
-.tile.hint .hint-overlay .ring{
-  fill: none;
-  stroke: rgba(255,255,255,0.98);   /* the white “tracer” */
-  stroke-linecap: round;
-  vector-effect: non-scaling-stroke; /* stroke stays at CSS px thickness */
-  stroke-width: var(--hint-ring);
-  /* Start with 0-length arc, let keyframes grow it */
-  stroke-dasharray: 0 100;
-  stroke-dashoffset: 0; /* JS sets this so arc starts at top-middle */
-  animation: hintDash 3.2s ease-in-out infinite;
-}
-
-/* Grow to 3/4, finish circle, then pause (Windows-like spinner) */
-@keyframes hintDash{
-  0%   { stroke-dasharray: 0 100; }
-  70%  { stroke-dasharray: 75 25; }   /* 3/4 around */
-  88%  { stroke-dasharray: 100 0; }   /* tail catches up */
-  100% { stroke-dasharray: 100 0; }   /* pause */
-}
-
-@media (prefers-reduced-motion: reduce){
-  .tile.hint, .tile.hint .hint-overlay .ring{ animation: none; }
-}
-
-
-
-
-    
-  /* ---- Force a single radius everywhere ---- */
-:root { --radius: 8px; } /* ← tweak this number */
-
-button,
-.help-btn,
-.check-btn,
-select,
-.tile,
-.tile.sel,
-.solved-group {
-  border-radius: var(--radius) !important;
-}
-
-/* Helps some browsers apply rounding on <select> */
-select { -webkit-appearance: none; background-clip: padding-box; overflow: hidden; }
-
-
-    
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="topbar">
-<a class="brand" href="./" aria-label="Connect home">
-  <img
-    class="logo"
-    src="logo.png"
-    srcset="logo.png 1x, logo@2x.png 2x"
-    alt="Connect"
-    decoding="async"
-    fetchpriority="high"
-  />
-  <span class="sr-only">connect</span>
-</a>
+      <h1 class="title">connect</h1>
       <div class="date-slot">
         <label for="puzzle-select" class="sr-only">Choose puzzle</label>
         <select id="puzzle-select" aria-label="Choose puzzle"></select>
       </div>
     </div>
 
-    <div id="solved" class="solved-list" aria-live="polite"></div>
     <div id="grid" class="grid" role="grid" aria-label="Connections grid of 16 tiles"></div>
 
     <div class="actions">
@@ -324,26 +159,25 @@ select { -webkit-appearance: none; background-clip: padding-box; overflow: hidde
 
   <script>
   (function(){
-    /* ---------- Tiny DOM helpers ---------- */
+    /* ---------- Helpers ---------- */
     const $  = (sel, root = document) => root.querySelector(sel);
     const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
     const shuffle = a => { for (let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]] } return a };
-    const PASTELS = ['p-blue','p-yellow','p-pink','p-green'];
 
-    /* ---------- Elements (late-bound) ---------- */
-    let sel, grid, solvedList, btnCheck, btnHelp;
+    /* ---------- Elements ---------- */
+    let sel, grid, btnCheck, btnHelp;
 
     /* ---------- State ---------- */
-    let manifest = [];                 // dates (newest-first)
-    const cache = new Map();           // date -> puzzle json
+    let manifest = [];
+    const cache = new Map(); // date -> puzzle
     let currentDate = null;
     let currentPuzzle = null;
     let selected = [];
     let solvedGroups = [];
     let layout = [];
-    let stagedHelp = null;             // { group, hinted:Set<string> }
+    let stagedHelp = null; // { group, hinted:Set<string> }
 
-    /* ---------- Fit-to-tile text ---------- */
+    /* ---------- Fit text ---------- */
     const BASE_SIZE = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tile-font')) || 14;
     const MIN_SIZE  = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tile-font-min')) || 10;
     const fits = el => el.scrollWidth <= el.clientWidth && el.scrollHeight <= el.clientHeight;
@@ -353,118 +187,132 @@ select { -webkit-appearance: none; background-clip: padding-box; overflow: hidde
       let s = BASE_SIZE;
       while (s > MIN_SIZE) { s--; el.style.fontSize = s + 'px'; if (fits(el)) break; }
     }
-    function fitAllTiles(){ [...$$('.tile'), ...$$('[data-fit]')].forEach(fitText); }
-    const ro = new ResizeObserver(() => fitAllTiles());
+    function fitAll(){ [...$$('.tile')].forEach(fitText); }
 
-    /* ---------- UK date gating ---------- */
-    function todayUK(){
-      const parts = new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
-      const y = parts.find(p=>p.type==='year').value, m=parts.find(p=>p.type==='month').value, d=parts.find(p=>p.type==='day').value;
-      return `${y}-${m}-${d}`;
-    }
-    const PREVIEW_MODE = new URLSearchParams(location.search).has('preview');
-
-    async function fetchJSON(candidates){
-      const list = Array.isArray(candidates)?candidates:[candidates];
-      const errs = [];
+    /* ---------- Data loading ---------- */
+    async function fetchJSON(cands){
+      const list = Array.isArray(cands)?cands:[cands];
       for (const url of list){
         try{
-          const res = await fetch(url,{cache:'no-store'});
-          if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+          const res = await fetch(url, { cache:'no-store' });
+          if (!res.ok) throw new Error();
           return await res.json();
-        }catch(e){ errs.push(`${url}: ${e.message}`); }
+        }catch{}
       }
-      throw new Error(errs.join(' | '));
+      throw new Error('fetch failed: '+list.join(', '));
     }
+    function todayUK(){
+      const p = new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+      const y=p.find(x=>x.type==='year').value, m=p.find(x=>x.type==='month').value, d=p.find(x=>x.type==='day').value;
+      return `${y}-${m}-${d}`;
+    }
+    const PREVIEW = new URLSearchParams(location.search).has('preview');
 
     async function loadEligibleDates(){
-      const all = await fetchJSON(['puzzles/manifest.json','/puzzles/manifest.json']);
-      if (PREVIEW_MODE) return all;
+      const all = await fetchJSON(['puzzles/manifest.json','/puzzles/manifest.json']); // newest-first
+      if (PREVIEW) return all;
       const cutoff = todayUK();
-      const eligible = all.filter(d => d <= cutoff);
-      return eligible.length ? eligible : all;
+      const elig = all.filter(d => d <= cutoff);
+      return elig.length ? elig : all;
     }
-
     async function getPuzzle(dateISO){
       if (cache.has(dateISO)) return cache.get(dateISO);
-      const data = await fetchJSON([`puzzles/${dateISO}.json`, `/puzzles/${dateISO}.json`]);
-      cache.set(dateISO, data);
-      return data;
+      const data = await fetchJSON([`puzzles/${dateISO}.json`,`/puzzles/${dateISO}.json`]);
+      cache.set(dateISO, data); return data;
     }
 
-    function setDropdownDates(dates){
+    /* ---------- UI helpers ---------- */
+    function setDates(dates){
       sel.innerHTML = '';
       for (const d of dates){
-        const opt = document.createElement('option');
-        opt.value = d; opt.textContent = d;
-        sel.appendChild(opt);
+        const o = document.createElement('option');
+        o.value = d; o.textContent = d;
+        sel.appendChild(o);
       }
-
-      function addHintOverlay(btn){
-  if (btn.querySelector('.hint-overlay')) return; // already added
-
-  // measure and read border-radius to match your rounded corners
-  const rect = btn.getBoundingClientRect();
-  const brPx = parseFloat(getComputedStyle(btn).borderRadius) || 0;
-  const minSide = Math.max(1, Math.min(rect.width, rect.height));
-  const rxUnits = Math.min(45, (brPx / minSide) * 50); // cap to keep corners sane
-
-  // Estimate perimeter to place the start at top-middle.
-  const w = rect.width, h = rect.height, r = Math.min(brPx, Math.min(w, h) / 2);
-  const topEdge = Math.max(0, w - 2*r);
-  const quarterArc = Math.PI * r / 2;     // 1/4 of corner circumference
-  const perim = 2*(w + h - 2*r) + 2*Math.PI*r;
-  const startAtTopMidPct = ((quarterArc + topEdge/2) / Math.max(1, perim)) * 100;
-
-  // Build SVG (normalized to 100x100 with pathLength=100 for easy dashes)
-  const svgNS = 'http://www.w3.org/2000/svg';
-  const wrap = document.createElement('div');
-  wrap.className = 'hint-overlay';
-
-  const svg  = document.createElementNS(svgNS, 'svg');
-  svg.setAttribute('viewBox', '0 0 100 100');
-  svg.setAttribute('preserveAspectRatio', 'none');
-  svg.style.width = '100%';
-  svg.style.height = '100%';
-
-  // Rounded-rect path aligned to the button border
-  const g = document.createElementNS(svgNS, 'g');
-  // Rotate so stroke-dashoffset=0 corresponds to top-left path start; we’ll offset to top-middle below
-  // (We keep rotation at 0 and use dashoffset calculation only — cleaner.)
-  const rr = document.createElementNS(svgNS, 'rect');
-  rr.setAttribute('x', '1');   // 1 unit inset to avoid clipping the stroke caps
-  rr.setAttribute('y', '1');
-  rr.setAttribute('width',  '98');
-  rr.setAttribute('height', '98');
-  rr.setAttribute('rx', rxUnits.toFixed(2));
-  rr.setAttribute('ry', rxUnits.toFixed(2));
-  rr.setAttribute('pathLength', '100');   // normalize total length to 100
-  rr.setAttribute('class', 'ring');
-
-  // Set the starting offset so the arc begins at the top-middle
-  rr.style.strokeDashoffset = `-${startAtTopMidPct.toFixed(2)}`;
-
-  g.appendChild(rr);
-  svg.appendChild(g);
-  wrap.appendChild(svg);
-  btn.appendChild(wrap);
-}
-
+    }
+    function updateCheckUI(){
+      const ready = selected.length === 4;
+      btnCheck.classList.toggle('ready', ready);
+      btnCheck.setAttribute('aria-disabled', ready ? 'false' : 'true');
     }
 
-    /* ---------- Rendering ---------- */
+    /* ---------- Hint SVG overlay (white tracer arc) ---------- */
+    function addHintOverlay(btn){
+      if (btn.querySelector('.hint-overlay')) return; // already present
+
+      const rect = btn.getBoundingClientRect();
+      const brPx = parseFloat(getComputedStyle(btn).borderRadius) || 0;
+      const minSide = Math.max(1, Math.min(rect.width, rect.height));
+      // Map CSS px radius to the normalized 100x100 viewBox space (0..50)
+      const rxUnits = Math.min(45, (brPx / minSide) * 50);
+
+      // Normalized geometry for the overlay rect (1..99) to avoid clipping end caps
+      const W = 100, H = 100, inset = 1;
+      const w = W - inset*2, h = H - inset*2, r = Math.min(rxUnits, w/2, h/2);
+
+      // Perimeter of rounded rect to compute where the top middle lies along the path
+      const topEdge = w - 2*r;
+      const perim = 2*(w - 2*r + h - 2*r) + 2*Math.PI*r;
+      const topMiddleFromTopLeft = topEdge/2; // distance from path's start (top-left edge start) to top-middle
+      const startPct = Math.max(0, Math.min(100, (topMiddleFromTopLeft / perim) * 100));
+
+      // Build SVG overlay
+      const svgNS = 'http://www.w3.org/2000/svg';
+      const wrap = document.createElement('div');
+      wrap.className = 'hint-overlay';
+      wrap.style.position = 'absolute';
+      wrap.style.inset = '0';
+      wrap.style.pointerEvents = 'none';
+      wrap.style.zIndex = '2';
+      wrap.style.borderRadius = getComputedStyle(btn).borderRadius;
+
+      const svg  = document.createElementNS(svgNS, 'svg');
+      svg.setAttribute('viewBox', '0 0 100 100');
+      svg.setAttribute('preserveAspectRatio', 'none');
+      svg.style.width = '100%';
+      svg.style.height = '100%';
+
+      const rr = document.createElementNS(svgNS, 'rect');
+      rr.setAttribute('x', String(inset));
+      rr.setAttribute('y', String(inset));
+      rr.setAttribute('width',  String(w));
+      rr.setAttribute('height', String(h));
+      rr.setAttribute('rx', r.toFixed(2));
+      rr.setAttribute('ry', r.toFixed(2));
+      rr.setAttribute('fill', 'none');
+      rr.setAttribute('stroke', 'rgba(255,255,255,0.98)');
+      rr.setAttribute('stroke-linecap', 'round');
+      rr.setAttribute('vector-effect', 'non-scaling-stroke');
+      rr.setAttribute('pathLength', '100'); // normalize to 100 units length
+
+      // Stroke width = same as hint border thickness
+      const hintRing = getComputedStyle(document.documentElement).getPropertyValue('--hint-ring').trim() || '2px';
+      rr.style.strokeWidth = hintRing;
+
+      // Start the dash at the top-middle: offset is negative of that position
+      rr.style.strokeDasharray = '0 100';
+      rr.style.strokeDashoffset = `-${startPct.toFixed(2)}`;
+
+      // Animate dash (CSS below applies to .ring class)
+      rr.setAttribute('class', 'ring');
+
+      svg.appendChild(rr);
+      wrap.appendChild(svg);
+      btn.appendChild(wrap);
+    }
+
+    /* ---------- Render ---------- */
     function renderGrid(){
       grid.innerHTML = '';
 
-      // Solved groups (top, full width)
+      // Solved groups (full-width)
       solvedGroups.forEach((g, idx) => {
         const wrap = document.createElement('div');
-        wrap.className = `tile solved solved-group ${PASTELS[idx] || PASTELS[PASTELS.length-1]}`;
+        wrap.className = `tile solved solved-group p-${['blue','yellow','pink','green'][idx] || 'yellow'}`;
         wrap.style.gridColumn = '1 / -1';
 
         const t = document.createElement('div'); t.className='solved-title';      t.textContent = g.title;
         const w = document.createElement('div'); w.className='solved-words-line'; w.textContent = g.words.join(', ');
-
         wrap.appendChild(t); wrap.appendChild(w); grid.appendChild(wrap);
       });
 
@@ -473,92 +321,73 @@ select { -webkit-appearance: none; background-clip: padding-box; overflow: hidde
         const btn = document.createElement('button');
         btn.type = 'button'; btn.className = 'tile'; btn.textContent = w;
 
-        // Hint cosmetic (keeps normal border so selection effect is visible)
-        if (stagedHelp && stagedHelp.hinted && stagedHelp.hinted.has(w)) {
+        // Hinted tiles: gradient border + white tracer overlay
+        if (stagedHelp && stagedHelp.hinted && stagedHelp.hinted.has(w)){
           btn.classList.add('hint');
+          addHintOverlay(btn);
         }
 
         btn.addEventListener('click', () => toggleWord(btn, w));
         grid.appendChild(btn);
-        ro.observe(btn);
       }
-      fitAllTiles();
+      fitAll();
     }
 
-    if (stagedHelp && stagedHelp.hinted && stagedHelp.hinted.has(w)) {
-  btn.classList.add('hint');          // keep your hint class
-  addHintOverlay(btn);                // <-- add this line
-}
-
-
-    /* ---------- Game helpers ---------- */
-    const wordsOfSolved = () => solvedGroups.flatMap(g => g.words);
-    const isSolvedWord  = w => solvedGroups.some(g => g.words.includes(w));
-
-    function buildInitialLayout(p){
-      const words = p.categories.flatMap(c => c.words);
-      shuffle(words);
-      layout = words;
-    }
-    function rebuildLayoutSolvedFirst(){
-      const top=[]; const seen=new Set();
-      for (const g of solvedGroups) for (const w of g.words) if (!seen.has(w)){ top.push(w); seen.add(w); }
-      const rest = layout.filter(w => !seen.has(w));
-      layout = [...top, ...rest];
-    }
-
-    function clearSelectionClasses(){ $$('.tile.sel').forEach(n => n.classList.remove('sel')); }
-    function updateCheckUI(){
-      const ready = selected.length === 4;
-      const btnCheck = $('#btn-check');
-      if (btnCheck){
-        btnCheck.classList.toggle('ready', ready);
-        btnCheck.setAttribute('aria-disabled', ready ? 'false' : 'true');
-      }
-    }
+    /* ---------- Game logic ---------- */
+    function isSolvedWord(w){ return solvedGroups.some(g => g.words.includes(w)); }
+    function buildInitialLayout(p){ const words = p.categories.flatMap(c => c.words); shuffle(words); layout = words; }
 
     function toggleWord(el, word){
       if (isSolvedWord(word)) return;
       const i = selected.indexOf(word);
       if (i >= 0){ selected.splice(i,1); el.classList.remove('sel'); }
       else{
-        if (selected.length === 4){ clearSelectionClasses(); selected = [word]; el.classList.add('sel'); }
+        if (selected.length === 4){ $$('.tile.sel').forEach(n=>n.classList.remove('sel')); selected=[word]; el.classList.add('sel'); }
         else { selected.push(word); el.classList.add('sel'); }
       }
       updateCheckUI();
     }
 
     function checkSelection(){
-      if (selected.length !== 4 || !currentPuzzle) return;
+      if (!currentPuzzle || selected.length !== 4) return;
       const pick = new Set(selected);
       const match = currentPuzzle.categories.find(c => c.words.every(w => pick.has(w)));
       if (match && !solvedGroups.some(g => g.title === match.title)){
-        revealGroup(match);
+        // clear staged hint if it was this group
+        if (stagedHelp && stagedHelp.group && stagedHelp.group.title === match.title) stagedHelp = null;
+        solvedGroups.push(match);
+        const gset = new Set(match.words);
+        layout = layout.filter(w => !gset.has(w));
+        selected = [];
+        updateCheckUI();
+        renderGrid();
       } else {
-        clearSelectionClasses(); selected = []; updateCheckUI();
+        $$('.tile.sel').forEach(n=>n.classList.remove('sel'));
+        selected = []; updateCheckUI();
       }
-    }
-
-    function revealGroup(group){
-      if (stagedHelp && stagedHelp.group && stagedHelp.group.title === group.title) stagedHelp = null;
-      solvedGroups.push(group);
-      const gset = new Set(group.words);
-      layout = layout.filter(w => !gset.has(w));
-      selected = [];
-      updateCheckUI();
-      renderGrid();
     }
 
     function handleHelp(){
       if (!currentPuzzle) return;
 
-      // Second press completes staged group
-      if (stagedHelp && stagedHelp.group){ revealGroup(stagedHelp.group); return; }
+      // Second press finishes staged group
+      if (stagedHelp && stagedHelp.group){ // reveal group
+        const g = stagedHelp.group;
+        if (!solvedGroups.some(x=>x.title===g.title)){
+          solvedGroups.push(g);
+          const gset = new Set(g.words);
+          layout = layout.filter(w => !gset.has(w));
+        }
+        stagedHelp = null;
+        selected = [];
+        updateCheckUI();
+        renderGrid();
+        return;
+      }
 
-      // First press: pick random unsolved group, hint 2 words and move them to front
+      // First press: stage random unsolved group, bring 2 words to front
       const unsolved = currentPuzzle.categories.filter(c => !solvedGroups.some(g => g.title === c.title));
       if (!unsolved.length) return;
-
       const group = unsolved[Math.floor(Math.random()*unsolved.length)];
       const words = [...group.words];
       for (let i=words.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [words[i],words[j]]=[words[j],words[i]]; }
@@ -570,13 +399,11 @@ select { -webkit-appearance: none; background-clip: padding-box; overflow: hidde
       renderGrid();
     }
 
-    /* ---------- Apply a date (single source of truth) ---------- */
+    /* ---------- Apply date ---------- */
     async function applyDate(dateISO){
       currentDate   = dateISO;
       currentPuzzle = await getPuzzle(dateISO);
-
-      selected = []; solvedGroups = []; layout = []; stagedHelp = null;
-
+      selected=[]; solvedGroups=[]; layout=[]; stagedHelp=null;
       buildInitialLayout(currentPuzzle);
       renderGrid();
       updateCheckUI();
@@ -586,77 +413,46 @@ select { -webkit-appearance: none; background-clip: padding-box; overflow: hidde
     async function boot(){
       try{
         manifest = await loadEligibleDates();
-        if (!manifest.length) throw new Error('No dates in manifest.');
-
-        setDropdownDates(manifest);
-
-        const defaultDate = manifest[0]; // newest eligible (≤ today UK)
-        sel.value = defaultDate;
-
-        await applyDate(defaultDate); // ensure first paint shows the right day
-
+        if (!manifest.length) throw new Error('No dates in manifest');
+        setDates(manifest);
+        const def = manifest[0];
+        sel.value = def;
+        await applyDate(def);
         sel.addEventListener('change', () => applyDate(sel.value));
         btnCheck.addEventListener('click', checkSelection);
         btnHelp.addEventListener('click', handleHelp);
       }catch(e){
         console.error(e);
+        grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--muted)">Failed to load puzzles.</div>';
       }
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-      sel        = $('#puzzle-select');
-      grid       = $('#grid');
-      solvedList = $('#solved');
-      btnCheck   = $('#btn-check');
-      btnHelp    = $('#btn-help');
-
-      if (!sel || !grid){ console.error('Missing #puzzle-select or #grid'); return; }
+      sel      = $('#puzzle-select');
+      grid     = $('#grid');
+      btnCheck = $('#btn-check');
+      btnHelp  = $('#btn-help');
       boot();
     });
   })();
   </script>
+
+  <style>
+    /* --- SVG arc animation for hint overlay --- */
+    .hint-overlay .ring{
+      /* CSS applies to the <rect class="ring"> inside the SVG we inject */
+      animation: hintDash 3.2s ease-in-out infinite;
+      /* ensure we inherit stroke/stroke-width set inline */
+    }
+    @keyframes hintDash{
+      0%   { stroke-dasharray: 0 100; }
+      70%  { stroke-dasharray: 75 25; }  /* grow to 3/4 perimeter */
+      88%  { stroke-dasharray: 100 0; }  /* tail catches up (full ring) */
+      100% { stroke-dasharray: 100 0; }  /* pause */
+    }
+    @media (prefers-reduced-motion: reduce){
+      .hint-overlay .ring{ animation: none; }
+    }
+  </style>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
