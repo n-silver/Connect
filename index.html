@@ -214,74 +214,70 @@
       .date-slot select{ min-width:160px }
     }
 
-/* ----- HINT TRACE: animated border around hinted tiles ----- */
 :root{
-  --hint-ring: 3px;                 /* thickness of the animated ring */
-  --hint-trace: var(--focus);       /* colour of the moving head (use your accent) */
+  --hint-ring: 2px;               /* ring thickness; adjust to taste */
+  --hint-trace: var(--pastel-blue-border); /* fallback colour if no group class */
 }
 
-/* The hinted tiles need a positioned wrapper for the pseudo-element */
+/* hinted tiles get a positioned container */
 .tile.hint{ position: relative; }
 
-/* Hide the hint trace when the tile is actually selected (so the selected style wins) */
-.tile.hint.sel::after{ display:none; }
+/* when a hinted tile is selected, let the selected style win */
+.tile.hint.sel::after{ display: none; }
 
-/* The animated ring */
+/* CLOCKWISE TRACE AROUND THE BORDER ONLY */
 .tile.hint::after{
-  content:"";
-  position:absolute;
-  inset:0;
+  content: "";
+  position: absolute;
+  inset: 0;
   border-radius: var(--radius-tile);
+  pointer-events: none;
 
-  /* Create a ring-only drawing area */
-  padding: var(--hint-ring);
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-          mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-          mask-composite: exclude;
+  /* We paint the border via layered backgrounds clipped to the border area,
+     while a solid fill keeps the interior untouched. */
+  border: var(--hint-ring) solid transparent;
 
-  /* Three conic layers:
-     1) COLOURED HEAD: arc between --start and --end (moves clockwise)
-     2) WHITE TAIL:   arc from top (0deg) to --start (grows after 3/4)
-     3) BASE RING:    your normal light grey border everywhere else
-  */
+  /* Layer order (top → bottom):
+     1) COLOURED HEAD arc (between --start and --end)
+     2) WHITE TAIL arc (from 0 to --trail)
+     3) INNER FILL (keeps tile face white)
+     4) BASE RING (your normal light-grey border) */
   background:
     conic-gradient(from -90deg,
-      transparent 0deg calc(var(--start) * 1deg),
-      var(--hint-trace) calc(var(--start) * 1deg) calc(var(--end) * 1deg),
-      transparent calc(var(--end) * 1deg) 360deg) ,
+      transparent 0deg calc(var(--start)*1deg),
+      var(--hint-trace) calc(var(--start)*1deg) calc(var(--end)*1deg),
+      transparent calc(var(--end)*1deg) 360deg) border-box,
     conic-gradient(from -90deg,
-      #fff 0deg calc(var(--start) * 1deg),
-      transparent calc(var(--start) * 1deg) 360deg) ,
-    conic-gradient(from -90deg,
-      var(--border) 0deg 360deg);
+      #ffffff 0deg calc(var(--trail)*1deg),
+      transparent calc(var(--trail)*1deg) 360deg) border-box,
+    linear-gradient(var(--card), var(--card)) padding-box,
+    conic-gradient(from -90deg, var(--border) 0deg 360deg) border-box;
 
-  /* Smooth edges */
-  filter: saturate(1.05);
-  animation: hintTrace 3.6s ease-in-out infinite;
-  will-change: background;
+  /* Make sure each layer clips to the right box */
+  background-clip: border-box, border-box, padding-box, border-box;
+
+  /* Motion */
+  animation: hintTraceCW 3.6s ease-in-out infinite;
+  will-change: background-position;
 }
 
-/* Clockwise sweep:
-   - 0%→75%: only the head advances (end: 0→270deg), start stays at 0deg
-   - 75%→95%: tail begins at top and catches up (start: 0→360deg, end: 270→360deg)
-   - 95%→100%: pause (both at 360deg), then reset next loop
-*/
-@keyframes hintTrace{
-  0%   { --start: 0;   --end: 0;   }
-  75%  { --start: 0;   --end: 270; }
-  95%  { --start: 360; --end: 360; }
-  100% { --start: 360; --end: 360; }
+/* Motion logic:
+   - 0%→75%: head sweeps 0→270deg; tail stays at top (0deg)
+   - 75%→95%: head completes to 360deg; tail grows 0→360deg chasing head
+   - 95%→100%: short pause (both 360deg), then loop */
+@keyframes hintTraceCW{
+  0%   { --start: 0;   --end: 0;   --trail: 0; }
+  75%  { --start: 0;   --end: 270; --trail: 0; }
+  95%  { --start: 0;   --end: 360; --trail: 360; }
+  100% { --start: 0;   --end: 360; --trail: 360; }
 }
 
-/* Respect reduced motion */
-@media (prefers-reduced-motion: reduce){
-  .tile.hint::after{ animation: none; }
-}
+/* Optional: colour the head by solved-group palette if you add these classes to hinted tiles */
+.tile.hint.p-yellow{ --hint-trace: var(--pastel-yellow-border); }
+.tile.hint.p-green { --hint-trace: var(--pastel-green-border); }
+.tile.hint.p-blue  { --hint-trace: var(--pastel-blue-border); }
+.tile.hint.p-pink  { --hint-trace: var(--pastel-pink-border); }
+
 
     
   /* ---- Force a single radius everywhere ---- */
@@ -571,6 +567,7 @@ select { -webkit-appearance: none; background-clip: padding-box; overflow: hidde
   </script>
 </body>
 </html>
+
 
 
 
