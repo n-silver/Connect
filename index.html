@@ -278,12 +278,6 @@
   100% { --start: 360; --end: 360; }
 }
 
-/* Optional: colour the moving head per group if you add p-classes to hinted tiles */
-.tile.hint.p-yellow{ --hint-trace: var(--pastel-yellow-border); }
-.tile.hint.p-green { --hint-trace: var(--pastel-green-border); }
-.tile.hint.p-blue  { --hint-trace: var(--pastel-blue-border); }
-.tile.hint.p-pink  { --hint-trace: var(--pastel-pink-border); }
-
 /* Respect reduced motion */
 @media (prefers-reduced-motion: reduce){
   .tile.hint::after{ animation: none; }
@@ -577,6 +571,7 @@ select { -webkit-appearance: none; background-clip: padding-box; overflow: hidde
   </script>
 </body>
 </html>
+
 
 
 
