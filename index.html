@@ -111,25 +111,29 @@
 
     .actions{ display:flex; justify-content:center; align-items:center; gap:8px; margin-top:12px }
     .help-btn, .check-btn{ padding:10px 16px }
-/* Clear, flowing gradient FILL (no blobs, no muddiness) */
+/* Soft, blending blobs with SCREEN blend to avoid mud */
 .check-btn.ready{
   border: 1px solid var(--border);
   border-radius: var(--radius-btn);
-  color: #fff; 
-  background: linear-gradient(120deg,
-    var(--ring-yellow) 0%,
-    var(--ring-green)  25%,
-    var(--ring-blue)   50%,
-    var(--ring-pink)   75%,
-    var(--ring-yellow) 100%
-  );
-  background-size: 320% 320%;
-  animation: btnFlow 6s ease-in-out infinite;
+  color: #fff;                  /* dark text on light pastels */
+  background:
+    radial-gradient(60% 60% at 20% 30%, rgba(255,231,138,0.65) 0 40%, rgba(255,231,138,0.22) 65%, transparent 75%) no-repeat,
+    radial-gradient(55% 55% at 80% 25%, rgba(207,229,255,0.60) 0 40%, rgba(207,229,255,0.20) 65%, transparent 75%) no-repeat,
+    radial-gradient(60% 60% at 30% 80%, rgba(201,235,201,0.60) 0 40%, rgba(201,235,201,0.20) 65%, transparent 75%) no-repeat,
+    radial-gradient(55% 55% at 75% 75%, rgba(202,163,255,0.65) 0 40%, rgba(202,163,255,0.22) 65%, transparent 75%) no-repeat,
+    var(--card);
+  background-blend-mode: screen, screen, screen, screen, normal; /* prevents muddy mixing */
+  background-size: 200% 200%, 190% 190%, 210% 210%, 200% 200%, auto;
+  background-position: 0% 60%, 100% 40%, 40% 100%, 60% 0%, 0 0;
+  animation: btnGas 22s ease-in-out infinite;
+  will-change: background-position;
 }
-@keyframes btnFlow{
-  0%   { background-position:   0% 50%; }
-  50%  { background-position: 100% 50%; }
-  100% { background-position:   0% 50%; }
+@keyframes btnGas{
+  0%   { background-position:  0% 60%, 100% 40%,  40% 100%, 60%  0%, 0 0; }
+  25%  { background-position: 35% 80%,  60% 20%,  20%  60%, 80% 40%, 0 0; }
+  50%  { background-position:100% 50%,   0% 50%,  50%   0%, 50% 100%, 0 0; }
+  75%  { background-position: 60% 20%,  20% 80%,  85%  40%, 40% 60%, 0 0; }
+  100% { background-position:  0% 60%, 100% 40%,  40% 100%, 60%  0%, 0 0; }
 }
 @media (prefers-reduced-motion: reduce){
   .check-btn.ready{ animation: none; }
@@ -477,6 +481,7 @@ select { -webkit-appearance: none; background-clip: padding-box; overflow: hidde
   </script>
 </body>
 </html>
+
 
 
 
