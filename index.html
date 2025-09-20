@@ -111,44 +111,30 @@
 
     .actions{ display:flex; justify-content:center; align-items:center; gap:8px; margin-top:12px }
     .help-btn, .check-btn{ padding:10px 16px }
-/* Animate the gradient angle via a custom property */
-@property --spin {
-  syntax: "<angle>";
-  inherits: false;
-  initial-value: 0deg;
-}
-
-/* Crisp, fluid conic gradient FILL when 4 tiles are selected */
+/* Clear, flowing gradient FILL (no blobs, no muddiness) */
 .check-btn.ready{
   border: 1px solid var(--border);
   border-radius: var(--radius-btn);
-  color: #fff; /* or set to #fff if you prefer */
-  background:
-    conic-gradient(from var(--spin),
-      var(--ring-yellow) 0% 25%,
-      var(--ring-green)  25% 50%,
-      var(--ring-blue)   50% 75%,
-      var(--ring-pink)   75% 100%
-    );
-  /* gentle roaming so it doesn't feel like a rigid spin */
-  background-size: 160% 160%;
-  background-position: 0% 50%;
-  animation: btnSwirl 20s ease-in-out infinite;
+  color: #111; /* dark text reads well on pastels */
+  background: linear-gradient(120deg,
+    var(--ring-yellow) 0%,
+    var(--ring-green)  25%,
+    var(--ring-blue)   50%,
+    var(--ring-pink)   75%,
+    var(--ring-yellow) 100%
+  );
+  background-size: 320% 320%;
+  animation: btnFlow 6s ease-in-out infinite;
 }
-
-/* Fluid multi-axis motion + slow angle sweep */
-@keyframes btnSwirl{
-  0%   { --spin: 0deg;   background-position:   0% 50%; }
-  25%  { --spin: 120deg; background-position:  50% 100%; }
-  50%  { --spin: 240deg; background-position: 100%  50%; }
-  75%  { --spin: 300deg; background-position:  50%   0%; }
-  100% { --spin: 360deg; background-position:   0% 50%; }
+@keyframes btnFlow{
+  0%   { background-position:   0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position:   0% 50%; }
 }
-
-/* Respect reduced motion */
 @media (prefers-reduced-motion: reduce){
   .check-btn.ready{ animation: none; }
 }
+
 
 
 
@@ -166,7 +152,7 @@
 
     /* Selected tiles: animated pastel border ring */
     /* Animated flowing GRADIENT BORDER on selected tiles (Option A style) */
-:root { --sel-ring: 2px; } /* tweak thickness */
+:root { --sel-ring: 3px; } /* tweak thickness */
 
 .tile.sel{
   /* paint the border via layered backgrounds */
@@ -188,7 +174,7 @@
   /* animate just the border layer */
   background-size: 100% 100%, 320% 320%;
   background-position: 0 0, 0% 50%;
-  animation: tileBorderFlow 16s ease-in-out infinite;
+  animation: tileBorderFlow 6s ease-in-out infinite;
 
   /* keep your subtle shadow etc. */
   box-shadow: 0 1px 2px rgba(0,0,0,.05);
@@ -515,6 +501,7 @@ select { -webkit-appearance: none; background-clip: padding-box; overflow: hidde
   </script>
 </body>
 </html>
+
 
 
 
