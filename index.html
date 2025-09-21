@@ -39,7 +39,7 @@
 
   /* Border/overlay thickness */
   --sel-ring:2px;   /* selected tiles */
-  --hint-ring:3px;  /* hinted tiles & white wipe stroke base */
+  --hint-ring:3px;  /* hinted tiles & wipe base thickness */
 }
 
 html,body{height:100%}
@@ -89,10 +89,12 @@ button{
   position:relative;
   height:var(--tile-h); border:1px solid var(--border); border-radius:var(--radius-tile); background:var(--card);
   font-weight:700; font-size:var(--tile-font); letter-spacing:.2px; padding:0 10px;
-  display:flex; align-items:center; justify-content:center; white-space:nowrap; overflow:hidden;
+  display:flex; align-items:center; justify-content:center; white-space:nowrap;
+  overflow:hidden; /* default: clip to tile */
   box-shadow:0 1px 2px rgba(0,0,0,.05); transition:background .15s ease,border-color .15s ease,transform .15s ease;
   color:var(--fg); user-select:none;
 }
+.tile.hint{ overflow:visible; } /* allow the overlay to extend into the ring */
 .tile:focus-visible{ outline:2px solid var(--focus); outline-offset:2px }
 
 /* Animated gradient BORDER for selected & hinted tiles */
@@ -113,30 +115,24 @@ button{
   background-position: 0 0, 0% 50%;
   animation: tileBorderFlow 16s ease-in-out infinite;
 }
-.tile.hint{
-  border-width: var(--hint-ring);
-  /* make sure no stray inner 1px shows through during animation */
-  border-color: transparent;
-}
+.tile.hint{ border-width: var(--hint-ring); }
 @keyframes tileBorderFlow{ 0%{background-position:0 0, 0% 50%} 50%{background-position:0 0, 100% 50%} 100%{background-position:0 0, 0% 50%} }
 
-/* White overlay that wipes over the WHOLE border ring */
+/* White wipe overlay (sits above content and fully blankets the ring) */
 .hint-overlay{
   position:absolute;
-  inset: calc(-1 * var(--hint-ring));                 /* extend out to include the ring */
+  inset: calc(-1 * var(--hint-ring));                 /* extend to include ring area */
   border-radius: calc(var(--radius-tile) + var(--hint-ring));
   z-index: 4;
   pointer-events: none;
-  background: transparent;
 }
 .hint-overlay svg{ width:100%; height:100%; display:block }
 .hint-overlay .wipe{
   fill:none;
-  stroke:#fff;                       /* shroud color equals card background */
+  /* stroke color set in JS to match --card exactly */
   stroke-linecap:butt;
   vector-effect:non-scaling-stroke;
-  /* NOTE: stroke-width set in JS to fully blanket the ring */
-  /* (removed drop-shadow to eliminate grey halo/seam) */
+  /* no shadows (they caused grey halo artifacts) */
 }
 
 @media (prefers-reduced-motion: reduce){
@@ -269,7 +265,6 @@ button{
     }
     if (btn.querySelector('.hint-overlay')) return;
 
-    // Create wrapper first so we can measure its true size (includes negative inset)
     const wrap = document.createElement('div');
     wrap.className = 'hint-overlay';
     btn.appendChild(wrap);
@@ -281,7 +276,10 @@ button{
     const tileRadius = parseFloat(csBtn.borderRadius) ||
                        parseFloat(csRoot.getPropertyValue('--radius-tile')) || 0;
 
-    // Round to whole pixels to avoid fractional seams on some DPRs
+    // Exact stroke color = --card (so it truly hides the rainbow ring)
+    const cardColor = (csRoot.getPropertyValue('--card') || '#fff').trim();
+
+    // Round to whole pixels to avoid fractional seams
     const rect = wrap.getBoundingClientRect();
     const W = Math.max(1, Math.round(rect.width));
     const H = Math.max(1, Math.round(rect.height));
@@ -313,9 +311,8 @@ button{
     const path = document.createElementNS(svgNS, 'path');
     path.setAttribute('d', d);
     path.setAttribute('class', 'wipe');
-
-    // IMPORTANT: make the stroke wide enough to blanket the whole ring
-    path.style.strokeWidth = (ringPx * 2 + 1) + 'px';
+    path.style.stroke = cardColor;
+    path.style.strokeWidth = (ringPx * 2 + 1) + 'px'; // blanket the whole ring
 
     svg.appendChild(path);
     wrap.appendChild(svg);
