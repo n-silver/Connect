@@ -38,16 +38,10 @@
   --btn-ready-fg:#111;
 
   /* Border animation thickness */
-  --sel-ring:2px;  /* selected tiles */
-  --hint-ring:2px; /* hinted tiles & spinner ring thickness */
-
-  /* Hint spinner sizing */
-  --hint-spin-duration: 5s;
-  --hint-spin-delay: .2s;
-  --hint-dot-size: 6px; /* will be overridden in JS to match ring if needed */
+  --sel-ring:2px;   /* selected tiles */
+  --hint-ring:3px;  /* hinted tiles & hint arc stroke width */
 }
 
-/* Base layout */
 html,body{height:100%}
 *,*::before,*::after{box-sizing:border-box; -webkit-text-fill-color:currentColor}
 body{margin:0; font-family:'Montserrat',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:var(--fg)}
@@ -96,7 +90,7 @@ button{
   font-weight:700; font-size:var(--tile-font); letter-spacing:.2px; padding:0 10px;
   display:flex; align-items:center; justify-content:center; white-space:nowrap; overflow:hidden;
   box-shadow:0 1px 2px rgba(0,0,0,.05); transition:background .15s ease,border-color .15s ease,transform .15s ease;
-  color:var(--fg); user-select:none;
+  color:var(--fg); user-select:none; position:relative;
 }
 .tile:focus-visible{ outline:2px solid var(--focus); outline-offset:2px }
 
@@ -121,64 +115,37 @@ button{
 .tile.hint{ border-width: var(--hint-ring); }
 @keyframes tileBorderFlow{ 0%{background-position:0 0, 0% 50%} 50%{background-position:0 0, 100% 50%} 100%{background-position:0 0, 0% 50%} }
 
-/* ---- HINT SPINNER OVERLAY (white dots along border ring, clipped to ring) ---- */
-.tile.hint .hint-spin{
-  position:absolute; inset:0; z-index:2; pointer-events:none;
-  border-radius: var(--radius-tile);
-  /* Create "ring only" drawing area via mask */
-  padding: var(--hint-ring);
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-          mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-          mask-composite: exclude;
+/* ---------- HINT OVERLAY (SVG ARC) ---------- */
+.hint-overlay{
+  position:absolute; inset:0; z-index:3; pointer-events:none; /* sits above border, never blocks clicks */
+}
+.hint-overlay svg{ width:100%; height:100%; display:block }
 
-  /* Rotate container to move dots clockwise (Windows-like) */
-  animation: spinR var(--hint-spin-duration) infinite cubic-bezier(.55, 0.15, .45, .85);
+/* The white tracer arc; pathLength=100 so we can use tidy percentages */
+.hint-overlay .ring{
+  fill:none;
+  stroke:rgba(255,255,255,0.98);
+  stroke-linecap:round;
+  vector-effect:non-scaling-stroke;
+  /* stroke width set inline to match --hint-ring in px */
+  stroke-dasharray: 0 100;       /* animated below */
+  stroke-dashoffset: 0;          /* we set offset to start at top-middle in JS */
+  animation: hintDash 3.2s ease-in-out infinite;
+  filter: drop-shadow(0 0 0.5px rgba(0,0,0,.35)); /* subtle lift over bright borders */
 }
 
-/* 6 dot "slots" share same position; opacity is staggered */
-.tile.hint .hint-spin .d{
-  position:absolute; top:0; left:0; right:0; bottom:0; opacity:0;
-  animation: dotO var(--hint-spin-duration) infinite step-end;
-}
-.tile.hint .hint-spin .d::after{
-  content:"";
-  position:absolute; top:50%; left:50%;
-  width: var(--hint-dot-size); height: var(--hint-dot-size);
-  background:#fff; border-radius:50%;
-  /* place the dot at the top-middle at radius --r */
-  transform: translate(-50%, -50%) translateY(calc(-1 * var(--r)));
-}
-
-/* Staggered delays to create trailing tail */
-.tile.hint .hint-spin .d:nth-child(1){ animation-delay: calc(var(--hint-spin-delay) * 0); }
-.tile.hint .hint-spin .d:nth-child(2){ animation-delay: calc(var(--hint-spin-delay) * 1); }
-.tile.hint .hint-spin .d:nth-child(3){ animation-delay: calc(var(--hint-spin-delay) * 2); }
-.tile.hint .hint-spin .d:nth-child(4){ animation-delay: calc(var(--hint-spin-delay) * 3); }
-.tile.hint .hint-spin .d:nth-child(5){ animation-delay: calc(var(--hint-spin-delay) * 4); }
-.tile.hint .hint-spin .d:nth-child(6){ animation-delay: calc(var(--hint-spin-delay) * 5); }
-
-/* Rotation & opacity keyframes borrowed from your SCSS idea */
-@keyframes spinR{
-  0%   { transform: rotate(-90deg); }
-  35%  { transform: rotate(270deg); }  /* +360° */
-  70%  { transform: rotate(630deg); }  /* +360° */
-  100% { transform: rotate(630deg); }  /* hold/pause */
-}
-@keyframes dotO{
-  0%   { opacity:1; }
-  70%  { opacity:0; }
-  100% { opacity:0; }
+/* Grow to 3/4, finish, pause */
+@keyframes hintDash{
+  0%   { stroke-dasharray: 0 100; }
+  70%  { stroke-dasharray: 75 25; }
+  88%  { stroke-dasharray: 100 0; }
+  100% { stroke-dasharray: 100 0; }
 }
 
 @media (prefers-reduced-motion: reduce){
   .check-btn.ready{ animation:none }
   .tile.sel,.tile.hint{ animation:none }
-  .tile.hint .hint-spin,.tile.hint .hint-spin .d{ animation:none }
+  .hint-overlay .ring{ animation:none }
 }
 
 /* Solved group block */
@@ -296,32 +263,65 @@ button{
     btnCheck.setAttribute('aria-disabled', ready ? 'false' : 'true');
   }
 
-  /* ---------- Hint spinner overlay ---------- */
-  function addHintSpinner(btn){
-    if (btn.querySelector('.hint-spin')) return; // already present
+  /* ---------- HINT SVG ARC OVERLAY ---------- */
+  function addHintOverlay(btn){
+    if (btn.querySelector('.hint-overlay')) return; // already present
 
-    // Compute radius to place dots at the middle of the border ring
-    const rect  = btn.getBoundingClientRect();
-    const styles = getComputedStyle(document.documentElement);
-    const ringPx = parseFloat(styles.getPropertyValue('--hint-ring')) || 2;
-    const radius = Math.max(0, Math.min(rect.width, rect.height) / 2 - ringPx / 2);
+    // Measure and compute geometry in *CSS pixels*, so stroke-width matches ring thickness
+    const rect = btn.getBoundingClientRect();
+    const ringPx = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hint-ring')) || 3;
+    const brPx = parseFloat(getComputedStyle(btn).borderRadius) || parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--radius-tile')) || 0;
 
-    // Build overlay container (masked to the border ring)
-    const spin = document.createElement('div');
-    spin.className = 'hint-spin';
-    // pass runtime vars for geometry
-    spin.style.setProperty('--r', radius + 'px');
-    // scale dot size to ring if you want: 1.4x ring thickness
-    const dotSize = Math.max(ringPx * 1.4, 4);
-    spin.style.setProperty('--hint-dot-size', dotSize + 'px');
+    const W = Math.max(1, rect.width);
+    const H = Math.max(1, rect.height);
 
-    // Create 6 dot slots
-    for (let i=0;i<6;i++){
-      const d = document.createElement('div');
-      d.className = 'd';
-      spin.appendChild(d);
-    }
-    btn.appendChild(spin);
+    // Outer path runs inset by ring/2 so the stroke centers over the visual border
+    const inset = ringPx/2;
+    const x = inset, y = inset, w = W - ringPx, h = H - ringPx;
+    const r = Math.max(0, Math.min(brPx, Math.min(w,h)/2));
+
+    // Build a rounded-rect path that starts at top-left curve end (x+r,y)
+    const d = [
+      `M ${x+r},${y}`,
+      `H ${x+w-r}`,
+      `A ${r},${r} 0 0 1 ${x+w},${y+r}`,
+      `V ${y+h-r}`,
+      `A ${r},${r} 0 0 1 ${x+w-r},${y+h}`,
+      `H ${x+r}`,
+      `A ${r},${r} 0 0 1 ${x},${y+h-r}`,
+      `V ${y+r}`,
+      `A ${r},${r} 0 0 1 ${x+r},${y}`,
+      `Z`
+    ].join(' ');
+
+    // Perimeter to normalize pathLength to 100 units
+    const perim = 2*(w + h - 2*r) + 2*Math.PI*r;
+
+    // Distance from path start (x+r,y) to TOP MIDDLE (x+w/2, y): along top edge only
+    const distToTopMid = Math.max(0, (w/2 - r));
+    const startPct = (distToTopMid / Math.max(1, perim)) * 100;
+
+    // Create overlay DOM
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const wrap = document.createElement('div');
+    wrap.className = 'hint-overlay';
+
+    const svg  = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('width',  '100%');
+    svg.setAttribute('height', '100%');
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.setAttribute('preserveAspectRatio','none');
+
+    const path = document.createElementNS(svgNS, 'path');
+    path.setAttribute('d', d);
+    path.setAttribute('class', 'ring');
+    path.setAttribute('pathLength', '100');      // normalize to 0..100
+    path.style.strokeWidth = ringPx + 'px';      // match border ring visually
+    path.style.strokeDasharray = '0 100';        // initial arc length
+    path.style.strokeDashoffset = `-${startPct}`; // start at top middle
+    svg.appendChild(path);
+    wrap.appendChild(svg);
+    btn.appendChild(wrap);
   }
 
   /* ---------- Render ---------- */
@@ -345,7 +345,7 @@ button{
 
       if (stagedHelp && stagedHelp.hinted && stagedHelp.hinted.has(word)){
         btn.classList.add('hint');       // gradient border
-        addHintSpinner(btn);             // white 6-dot spinner overlay
+        addHintOverlay(btn);             // white arc overlay
       }
 
       btn.addEventListener('click', () => toggleWord(btn, word));
