@@ -39,7 +39,7 @@
 
   /* Border animation thickness */
   --sel-ring:2px;   /* selected tiles */
-  --hint-ring:3px;  /* hinted tiles & wipe stroke */
+  --hint-ring:3px;  /* hinted tiles & white wipe stroke */
 }
 
 html,body{height:100%}
@@ -116,37 +116,21 @@ button{
 .tile.hint{ border-width: var(--hint-ring); }
 @keyframes tileBorderFlow{ 0%{background-position:0 0, 0% 50%} 50%{background-position:0 0, 100% 50%} 100%{background-position:0 0, 0% 50%} }
 
-/* ===== HINT SHROUD (white “pie” that reveals then refills) ===== */
-.hint-overlay{
-  position:absolute; inset:0; z-index:3; pointer-events:none;
-}
+/* --- HINT white “pie” overlay (drawn exactly over the border ring) --- */
+.hint-overlay{ position:absolute; inset:0; z-index:3; pointer-events:none }
 .hint-overlay svg{ width:100%; height:100%; display:block }
-
-/* White stroke sits exactly over the border ring */
 .hint-overlay .wipe{
   fill:none;
   stroke:#fff;
-  stroke-linecap:butt;              /* crisp wedge edge */
-  vector-effect:non-scaling-stroke; /* keep stroke width in CSS px */
-  /* stroke-width set inline (== --hint-ring) */
-  /* Path length normalized to 100 so we can animate %s cleanly */
-  /* We animate dasharray & dashoffset to create the pie open/close */
-  animation: revealWipe 3.6s cubic-bezier(.55,.15,.45,.85) infinite;
-  filter: drop-shadow(0 0 0.5px rgba(0,0,0,.35)); /* slight lift over bright border */
-}
-
-/* From fully hidden (white covers ring) to fully revealed (white gone),
-   then refill while advancing clockwise (dashoffset -100). */
-@keyframes revealWipe{
-  0%   { stroke-dasharray: 100 0;  stroke-dashoffset:   0;   } /* full white */
-  50%  { stroke-dasharray:   0 100; stroke-dashoffset:   0;   } /* full reveal */
-  100% { stroke-dasharray: 100 0;  stroke-dashoffset: -100; } /* refilled and advanced one loop */
+  stroke-linecap:butt;                /* crisp wedge edge */
+  vector-effect:non-scaling-stroke;   /* keep the stroke px width consistent */
+  /* stroke-width and dash values are set dynamically in JS (use real pixels) */
+  filter: drop-shadow(0 0 .5px rgba(0,0,0,.35)); /* small lift over rainbow border */
 }
 
 @media (prefers-reduced-motion: reduce){
   .check-btn.ready{ animation:none }
   .tile.sel,.tile.hint{ animation:none }
-  .hint-overlay .wipe{ animation:none }
 }
 
 /* Solved groups */
@@ -264,14 +248,13 @@ button{
     btnCheck.setAttribute('aria-disabled', ready ? 'false' : 'true');
   }
 
-  /* ---------- Add the white “pie” shroud overlay to a hinted tile ---------- */
+  /* ---------- White PIE overlay animation (JS-driven, pixel-perfect) ---------- */
   function addHintWipeOverlay(btn){
     if (btn.querySelector('.hint-overlay')) return; // already present
 
-    // Dimensions in CSS pixels for perfect alignment
+    // Measure and compute geometry in CSS px
     const rect   = btn.getBoundingClientRect();
     const ringPx = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hint-ring')) || 3;
-    // Use tile's actual radius (fallback to CSS var)
     const brPx   = parseFloat(getComputedStyle(btn).borderRadius) ||
                    parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--radius-tile')) || 0;
 
@@ -283,7 +266,7 @@ button{
     const x = inset, y = inset, w = W - ringPx, h = H - ringPx;
     const r = Math.max(0, Math.min(brPx, Math.min(w,h)/2));
 
-    // Rounded-rect path that STARTS at TOP MIDDLE (x+w/2, y), travels clockwise
+    // Rounded-rect path STARTING at TOP MIDDLE, clockwise
     const d = [
       `M ${x + w/2},${y}`,
       `H ${x + w - r}`,
@@ -311,16 +294,55 @@ button{
     const path  = document.createElementNS(svgNS, 'path');
     path.setAttribute('d', d);
     path.setAttribute('class', 'wipe');
-    path.setAttribute('pathLength','100');          // normalize length to 0..100
     path.style.strokeWidth = ringPx + 'px';
-    // Initial state: fully white (dasharray 100 0), and since the path starts at top middle,
-    // the sweep will begin there without extra offset.
-    path.style.strokeDasharray  = '100 0';
-    path.style.strokeDashoffset = '0';
 
     svg.appendChild(path);
     wrap.appendChild(svg);
     btn.appendChild(wrap);
+
+    // After in DOM, get real length and start animation
+    const L = path.getTotalLength();
+
+    // Helper to set the dash pattern
+    function setDash(a, offset){
+      const aClamped = Math.max(0, Math.min(L, a));
+      path.style.strokeDasharray  = `${aClamped} ${Math.max(0, L - aClamped)}`;
+      path.style.strokeDashoffset = `${offset || 0}`;
+    }
+
+    // Animate (60fps-ish)
+    const D = 3600; // total duration ms (tweak to taste)
+    let rafId = 0;
+    function tick(t0){
+      function frame(ts){
+        const p = ((ts - t0) % D) / D; // 0..1
+        if (p < 0.5){
+          // Phase 1: reveal — shrink white length from L -> 0, stationary at top middle
+          const q = p / 0.5;     // 0..1
+          const a = L * (1 - q); // white length
+          setDash(a, 0);
+        } else {
+          // Phase 2: refill while moving clockwise
+          const q = (p - 0.5) / 0.5; // 0..1
+          const a = L * q;           // white length grows
+          const o = -L * q;          // and advances clockwise
+          setDash(a, o);
+        }
+        rafId = requestAnimationFrame(frame);
+      }
+      rafId = requestAnimationFrame(frame);
+    }
+    // Kick off
+    requestAnimationFrame(tick);
+
+    // Clean up if the tile is removed
+    const obs = new MutationObserver(() => {
+      if (!document.body.contains(btn)) {
+        cancelAnimationFrame(rafId);
+        obs.disconnect();
+      }
+    });
+    obs.observe(document.body, { childList:true, subtree:true });
   }
 
   /* ---------- Render ---------- */
@@ -342,7 +364,7 @@ button{
       const btn = document.createElement('button');
       btn.type = 'button'; btn.className = 'tile'; btn.textContent = word;
 
-      // Hinted tiles get: gradient border + white “pie” shroud overlay
+      // Hinted tiles: gradient border + white pie overlay
       if (stagedHelp && stagedHelp.hinted && stagedHelp.hinted.has(word)){
         btn.classList.add('hint');
         addHintWipeOverlay(btn);
