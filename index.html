@@ -257,6 +257,11 @@ button{
 
   /* ---------- White “pie” overlay over the border ring (JS-driven) ---------- */
   function addHintWipeOverlay(btn){
+    // Robustness: ensure we measure only when connected & sized
+    if (!btn.isConnected || btn.offsetWidth === 0 || btn.offsetHeight === 0){
+      requestAnimationFrame(() => addHintWipeOverlay(btn));
+      return;
+    }
     if (btn.querySelector('.hint-overlay')) return;
 
     // Create wrapper first so we can measure its true size (includes negative inset)
@@ -264,9 +269,12 @@ button{
     wrap.className = 'hint-overlay';
     btn.appendChild(wrap);
 
-    const ringPx = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hint-ring')) || 3;
-    const tileRadius = parseFloat(getComputedStyle(btn).borderRadius) ||
-                       parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--radius-tile')) || 0;
+    const csRoot = getComputedStyle(document.documentElement);
+    const csBtn  = getComputedStyle(btn);
+
+    const ringPx = parseFloat(csRoot.getPropertyValue('--hint-ring')) || 3;
+    const tileRadius = parseFloat(csBtn.borderRadius) ||
+                       parseFloat(csRoot.getPropertyValue('--radius-tile')) || 0;
 
     const rect = wrap.getBoundingClientRect(); // overlay box ≈ border box (+ ring)
     const W = Math.max(1, rect.width);
@@ -363,14 +371,16 @@ button{
       const btn = document.createElement('button');
       btn.type = 'button'; btn.className = 'tile'; btn.textContent = word;
 
-      // Hinted tiles: rainbow ring + pie shroud on top
-      if (stagedHelp && stagedHelp.hinted && stagedHelp.hinted.has(word)){
-        btn.classList.add('hint');
-        addHintWipeOverlay(btn);
-      }
+      const isHinted = stagedHelp && stagedHelp.hinted && stagedHelp.hinted.has(word);
+      if (isHinted) btn.classList.add('hint');
 
       btn.addEventListener('click', () => toggleWord(btn, word));
-      grid.appendChild(btn);
+      grid.appendChild(btn); // <-- append first to ensure correct measurements
+
+      if (isHinted){
+        // Defer overlay creation so layout is committed and sizes are non-zero
+        requestAnimationFrame(() => addHintWipeOverlay(btn));
+      }
     }
     fitAll();
   }
