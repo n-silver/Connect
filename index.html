@@ -39,7 +39,7 @@
 
   /* Border/overlay thickness */
   --sel-ring:2px;   /* selected tiles */
-  --hint-ring:3px;  /* hinted tiles & white wipe stroke */
+  --hint-ring:3px;  /* hinted tiles & white wipe stroke base */
 }
 
 html,body{height:100%}
@@ -113,25 +113,30 @@ button{
   background-position: 0 0, 0% 50%;
   animation: tileBorderFlow 16s ease-in-out infinite;
 }
-.tile.hint{ border-width: var(--hint-ring); }
+.tile.hint{
+  border-width: var(--hint-ring);
+  /* make sure no stray inner 1px shows through during animation */
+  border-color: transparent;
+}
 @keyframes tileBorderFlow{ 0%{background-position:0 0, 0% 50%} 50%{background-position:0 0, 100% 50%} 100%{background-position:0 0, 0% 50%} }
 
-/* White “pie shroud” overlay (covers the border ring only) */
+/* White overlay that wipes over the WHOLE border ring */
 .hint-overlay{
   position:absolute;
   inset: calc(-1 * var(--hint-ring));                 /* extend out to include the ring */
   border-radius: calc(var(--radius-tile) + var(--hint-ring));
   z-index: 4;
   pointer-events: none;
+  background: transparent;
 }
 .hint-overlay svg{ width:100%; height:100%; display:block }
 .hint-overlay .wipe{
   fill:none;
-  stroke:#fff;                       /* the shroud */
+  stroke:#fff;                       /* shroud color equals card background */
   stroke-linecap:butt;
   vector-effect:non-scaling-stroke;
-  /* strokeWidth + dash values set in JS using real pixels */
-  filter: drop-shadow(0 0 .6px rgba(0,0,0,.35)); /* slight lift over rainbow ring */
+  /* NOTE: stroke-width set in JS to fully blanket the ring */
+  /* (removed drop-shadow to eliminate grey halo/seam) */
 }
 
 @media (prefers-reduced-motion: reduce){
@@ -255,9 +260,9 @@ button{
     btnCheck.setAttribute('aria-disabled', ready ? 'false' : 'true');
   }
 
-  /* ---------- White “pie” overlay over the border ring (JS-driven) ---------- */
+  /* ---------- White wipe overlay (covers the entire ring) ---------- */
   function addHintWipeOverlay(btn){
-    // Robustness: ensure we measure only when connected & sized
+    // Ensure we measure only when connected & sized
     if (!btn.isConnected || btn.offsetWidth === 0 || btn.offsetHeight === 0){
       requestAnimationFrame(() => addHintWipeOverlay(btn));
       return;
@@ -276,25 +281,25 @@ button{
     const tileRadius = parseFloat(csBtn.borderRadius) ||
                        parseFloat(csRoot.getPropertyValue('--radius-tile')) || 0;
 
-    const rect = wrap.getBoundingClientRect(); // overlay box ≈ border box (+ ring)
-    const W = Math.max(1, rect.width);
-    const H = Math.max(1, rect.height);
+    // Round to whole pixels to avoid fractional seams on some DPRs
+    const rect = wrap.getBoundingClientRect();
+    const W = Math.max(1, Math.round(rect.width));
+    const H = Math.max(1, Math.round(rect.height));
 
-    // Midline of the border ring
-    const x = ringPx/2, y = ringPx/2, w = W - ringPx, h = H - ringPx;
-    const rMid = Math.max(0, tileRadius + ringPx/2);
+    // Draw along the OUTER edge of the ring
+    const x = 0, y = 0, w = W, h = H;
+    const rOuter = Math.max(0, tileRadius + ringPx);
 
-    // Path starting at top middle, clockwise, hugging the ring midline
     const d = [
       `M ${x + w/2},${y}`,
-      `H ${x + w - rMid}`,
-      `A ${rMid} ${rMid} 0 0 1 ${x + w},${y + rMid}`,
-      `V ${y + h - rMid}`,
-      `A ${rMid} ${rMid} 0 0 1 ${x + w - rMid},${y + h}`,
-      `H ${x + rMid}`,
-      `A ${rMid} ${rMid} 0 0 1 ${x},${y + h - rMid}`,
-      `V ${y + rMid}`,
-      `A ${rMid} ${rMid} 0 0 1 ${x + rMid},${y}`,
+      `H ${x + w - rOuter}`,
+      `A ${rOuter} ${rOuter} 0 0 1 ${x + w},${y + rOuter}`,
+      `V ${y + h - rOuter}`,
+      `A ${rOuter} ${rOuter} 0 0 1 ${x + w - rOuter},${y + h}`,
+      `H ${x + rOuter}`,
+      `A ${rOuter} ${rOuter} 0 0 1 ${x},${y + h - rOuter}`,
+      `V ${y + rOuter}`,
+      `A ${rOuter} ${rOuter} 0 0 1 ${x + rOuter},${y}`,
       `H ${x + w/2}`,
       `Z`
     ].join(' ');
@@ -308,7 +313,9 @@ button{
     const path = document.createElementNS(svgNS, 'path');
     path.setAttribute('d', d);
     path.setAttribute('class', 'wipe');
-    path.style.strokeWidth = Math.max(ringPx, 3) + 'px'; // ensure coverage
+
+    // IMPORTANT: make the stroke wide enough to blanket the whole ring
+    path.style.strokeWidth = (ringPx * 2 + 1) + 'px';
 
     svg.appendChild(path);
     wrap.appendChild(svg);
@@ -375,11 +382,10 @@ button{
       if (isHinted) btn.classList.add('hint');
 
       btn.addEventListener('click', () => toggleWord(btn, word));
-      grid.appendChild(btn); // <-- append first to ensure correct measurements
+      grid.appendChild(btn); // append first so we can measure correctly
 
       if (isHinted){
-        // Defer overlay creation so layout is committed and sizes are non-zero
-        requestAnimationFrame(() => addHintWipeOverlay(btn));
+        requestAnimationFrame(() => addHintWipeOverlay(btn)); // build overlay after layout commit
       }
     }
     fitAll();
