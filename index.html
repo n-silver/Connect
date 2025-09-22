@@ -34,12 +34,12 @@
   --ring-blue:   var(--pastel-blue-border);
   --ring-pink:   var(--pastel-pink-border);
 
-  /* Buttons */
-  --btn-ready-fg:#111;
+  /* Border thickness */
+  --sel-ring:3px;  /* selected tiles */
+  --hint-ring:1px; /* hinted tiles */
 
-  /* Border/overlay thickness */
-  --sel-ring:2px;   /* selected tiles */
-  --hint-ring:3px;  /* hinted tiles & wipe base thickness */
+  /* Buttons */
+  --btn-ready-fg:#fff; /* Check text becomes white when ready */
 }
 
 html,body{height:100%}
@@ -56,7 +56,7 @@ body{margin:0; font-family:'Montserrat',system-ui,-apple-system,Segoe UI,Roboto,
   content:""; position:absolute; left:50%; transform:translateX(-50%);
   bottom:-0.5px; width:100vw; height:1px; background:var(--border);
 }
-.title{ margin:10px 0; font-size:32px; font-weight:700; letter-spacing:.2px; text-transform:lowercase }
+.logo{ height:36px; display:block }
 .date-slot select{
   min-width:140px; border:1px solid var(--border); background:var(--card); color:var(--fg);
   border-radius:var(--radius-input); padding:8px 10px; font-size:14px; cursor:pointer; appearance:none;
@@ -70,7 +70,7 @@ button{
 }
 .check-btn.ready{
   border:1px solid var(--border);
-  color: var(--btn-ready-fg);
+  color: var(--btn-ready-fg); /* text white when ready */
   background: linear-gradient(120deg,
     var(--ring-yellow) 0%,
     var(--ring-green)  25%,
@@ -90,16 +90,15 @@ button{
   height:var(--tile-h); border:1px solid var(--border); border-radius:var(--radius-tile); background:var(--card);
   font-weight:700; font-size:var(--tile-font); letter-spacing:.2px; padding:0 10px;
   display:flex; align-items:center; justify-content:center; white-space:nowrap;
-  overflow:hidden; /* default: clip to tile */
+  overflow:hidden;
   box-shadow:0 1px 2px rgba(0,0,0,.05); transition:background .15s ease,border-color .15s ease,transform .15s ease;
   color:var(--fg); user-select:none;
 }
-.tile.hint{ overflow:visible; } /* allow the overlay to extend into the ring */
+.tile.hint{ overflow:visible; } /* let the 1px ring overlay sit outside */
 .tile:focus-visible{ outline:2px solid var(--focus); outline-offset:2px }
 
 /* Animated gradient BORDER for selected & hinted tiles */
-.tile.sel,
-.tile.hint{
+.tile.sel{
   border: var(--sel-ring) solid transparent;
   border-radius: var(--radius-tile);
   background:
@@ -115,7 +114,23 @@ button{
   background-position: 0 0, 0% 50%;
   animation: tileBorderFlow 16s ease-in-out infinite;
 }
-.tile.hint{ border-width: var(--hint-ring); }
+.tile.hint{
+  border: var(--hint-ring) solid transparent;
+  border-radius: var(--radius-tile);
+  background:
+    linear-gradient(var(--card), var(--card)) padding-box,
+    linear-gradient(120deg,
+      var(--ring-yellow) 0%,
+      var(--ring-green)  25%,
+      var(--ring-blue)   50%,
+      var(--ring-pink)   75%,
+      var(--ring-yellow) 100%
+    ) border-box;
+  background-size: 100% 100%, 320% 320%;
+  background-position: 0 0, 0% 50%;
+  animation: tileBorderFlow 16s ease-in-out infinite;
+}
+
 @keyframes tileBorderFlow{ 0%{background-position:0 0, 0% 50%} 50%{background-position:0 0, 100% 50%} 100%{background-position:0 0, 0% 50%} }
 
 /* White wipe overlay (sits above content and fully blankets the ring) */
@@ -129,10 +144,8 @@ button{
 .hint-overlay svg{ width:100%; height:100%; display:block }
 .hint-overlay .wipe{
   fill:none;
-  /* stroke color set in JS to match --card exactly */
   stroke-linecap:butt;
   vector-effect:non-scaling-stroke;
-  /* no shadows (they caused grey halo artifacts) */
 }
 
 @media (prefers-reduced-motion: reduce){
@@ -165,7 +178,8 @@ button{
 <body>
   <div class="wrap">
     <div class="topbar">
-      <h1 class="title">connect</h1>
+      <!-- Replace src with your image path -->
+      <img class="logo" id="app-logo" src="assets/logo.svg" alt="Connect" />
       <div class="date-slot">
         <label for="puzzle-select" class="sr-only">Choose puzzle</label>
         <select id="puzzle-select" aria-label="Choose puzzle"></select>
@@ -256,11 +270,11 @@ button{
     btnCheck.setAttribute('aria-disabled', ready ? 'false' : 'true');
   }
 
-  /* ---------- White wipe overlay (covers the entire ring) ---------- */
-  function addHintWipeOverlay(btn){
+  /* ---------- Hint overlay helpers ---------- */
+  function ensureHintOverlay(btn){
     // Ensure we measure only when connected & sized
     if (!btn.isConnected || btn.offsetWidth === 0 || btn.offsetHeight === 0){
-      requestAnimationFrame(() => addHintWipeOverlay(btn));
+      requestAnimationFrame(() => ensureHintOverlay(btn));
       return;
     }
     if (btn.querySelector('.hint-overlay')) return;
@@ -272,19 +286,15 @@ button{
     const csRoot = getComputedStyle(document.documentElement);
     const csBtn  = getComputedStyle(btn);
 
-    const ringPx = parseFloat(csRoot.getPropertyValue('--hint-ring')) || 3;
+    const ringPx = parseFloat(csRoot.getPropertyValue('--hint-ring')) || 1;
     const tileRadius = parseFloat(csBtn.borderRadius) ||
                        parseFloat(csRoot.getPropertyValue('--radius-tile')) || 0;
-
-    // Exact stroke color = --card (so it truly hides the rainbow ring)
     const cardColor = (csRoot.getPropertyValue('--card') || '#fff').trim();
 
-    // Round to whole pixels to avoid fractional seams
     const rect = wrap.getBoundingClientRect();
     const W = Math.max(1, Math.round(rect.width));
     const H = Math.max(1, Math.round(rect.height));
 
-    // Draw along the OUTER edge of the ring
     const x = 0, y = 0, w = W, h = H;
     const rOuter = Math.max(0, tileRadius + ringPx);
 
@@ -312,31 +322,27 @@ button{
     path.setAttribute('d', d);
     path.setAttribute('class', 'wipe');
     path.style.stroke = cardColor;
-    path.style.strokeWidth = (ringPx * 2 + 1) + 'px'; // blanket the whole ring
+    path.style.strokeWidth = (ringPx * 2 + 1) + 'px'; // blanket the 1px ring fully
 
     svg.appendChild(path);
     wrap.appendChild(svg);
 
     // Animate using real length in px
     const L = path.getTotalLength();
-
     function setDash(len, off){
       const a = Math.max(0, Math.min(L, len));
       path.style.strokeDasharray  = `${a} ${Math.max(0, L - a)}`;
       path.style.strokeDashoffset = `${off || 0}`;
     }
-
     const D = 3600; // ms per cycle
     let rafId = 0;
     function loop(start){
       function frame(ts){
-        const p = ((ts - start) % D) / D; // 0..1
+        const p = ((ts - start) % D) / D;
         if (p < 0.5){
-          // Reveal: shrink white from L -> 0 (stationary at top middle)
           const q = p / 0.5;
           setDash(L * (1 - q), 0);
         } else {
-          // Refill while advancing clockwise
           const q = (p - 0.5) / 0.5;
           setDash(L * q, -L * q);
         }
@@ -346,7 +352,7 @@ button{
     }
     requestAnimationFrame(loop);
 
-    // Cleanup if tile removed
+    // Cleanup if tile removed from DOM
     const mo = new MutationObserver(() => {
       if (!document.body.contains(btn)){
         cancelAnimationFrame(rafId);
@@ -354,6 +360,22 @@ button{
       }
     });
     mo.observe(document.body, { childList:true, subtree:true });
+  }
+
+  function removeHintOverlay(btn){
+    btn.classList.remove('hint');
+    const overlay = btn.querySelector('.hint-overlay');
+    if (overlay) overlay.remove();
+  }
+
+  function applyHintStateForWord(btn, word){
+    const shouldHint = stagedHelp && stagedHelp.hinted && stagedHelp.hinted.has(word) && !btn.classList.contains('sel');
+    if (shouldHint){
+      btn.classList.add('hint');
+      ensureHintOverlay(btn);
+    } else {
+      removeHintOverlay(btn);
+    }
   }
 
   /* ---------- Render ---------- */
@@ -375,15 +397,11 @@ button{
       const btn = document.createElement('button');
       btn.type = 'button'; btn.className = 'tile'; btn.textContent = word;
 
-      const isHinted = stagedHelp && stagedHelp.hinted && stagedHelp.hinted.has(word);
-      if (isHinted) btn.classList.add('hint');
-
       btn.addEventListener('click', () => toggleWord(btn, word));
-      grid.appendChild(btn); // append first so we can measure correctly
+      grid.appendChild(btn);
 
-      if (isHinted){
-        requestAnimationFrame(() => addHintWipeOverlay(btn)); // build overlay after layout commit
-      }
+      // Apply hint (1px ring) if this word is currently hinted
+      applyHintStateForWord(btn, word);
     }
     fitAll();
   }
@@ -394,12 +412,34 @@ button{
 
   function toggleWord(el, word){
     if (isSolvedWord(word)) return;
-    const i = selected.indexOf(word);
-    if (i >= 0){ selected.splice(i,1); el.classList.remove('sel'); }
-    else{
-      if (selected.length === 4){ $$('.tile.sel').forEach(n=>n.classList.remove('sel')); selected=[word]; el.classList.add('sel'); }
-      else { selected.push(word); el.classList.add('sel'); }
+
+    const wasSelected = el.classList.contains('sel');
+
+    if (wasSelected){
+      // Deselect
+      el.classList.remove('sel');
+      const idx = selected.indexOf(word);
+      if (idx >= 0) selected.splice(idx,1);
+      // Restore hint (if this word is part of stagedHelp)
+      applyHintStateForWord(el, word);
+    } else {
+      // If already 4 selected, clear them (and restore hints where appropriate)
+      if (selected.length === 4){
+        const selectedEls = $$('.tile.sel');
+        selected = [];
+        selectedEls.forEach(n => {
+          n.classList.remove('sel');
+          const w = n.textContent;
+          applyHintStateForWord(n, w);
+        });
+      }
+      // Select this one
+      el.classList.add('sel');
+      selected.push(word);
+      // Turn OFF hint styling while selected
+      removeHintOverlay(el);
     }
+
     updateCheckUI();
   }
 
@@ -416,8 +456,15 @@ button{
       updateCheckUI();
       renderGrid();
     } else {
-      $$('.tile.sel').forEach(n=>n.classList.remove('sel'));
-      selected = []; updateCheckUI();
+      // Wrong pick: clear selection & restore hint styles where applicable
+      const selectedEls = $$('.tile.sel');
+      selectedEls.forEach(n => {
+        n.classList.remove('sel');
+        const w = n.textContent;
+        applyHintStateForWord(n, w);
+      });
+      selected = [];
+      updateCheckUI();
     }
   }
 
@@ -439,7 +486,7 @@ button{
       return;
     }
 
-    // First press: stage random unsolved group, bring 2 words to front
+    // First press: stage random unsolved group, bring 2 words to front (hinted)
     const unsolved = currentPuzzle.categories.filter(c => !solvedGroups.some(g => g.title === c.title));
     if (!unsolved.length) return;
     const group = unsolved[Math.floor(Math.random()*unsolved.length)];
