@@ -80,7 +80,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
   background-size:320% 320%;
   animation:btnFlow 16s ease-in-out infinite;
 }
-/* REVERSED button gradient flow (right -> left) */
+/* Reversed button gradient flow (right -> left) */
 @keyframes btnFlow{
   0%{background-position:100% 50%}
   50%{background-position:0% 50%}
@@ -132,7 +132,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
   border-width:var(--hint-ring);
   overflow:visible; /* allow overlay to extend into ring */
 }
-/* REVERSED tile border flow (right -> left) */
+/* Reversed tile border flow (right -> left) */
 @keyframes tileBorderFlow{
   0%{background-position:0 0, 100% 50%}
   50%{background-position:0 0, 0% 50%}
@@ -274,7 +274,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
 
   const getWord = el => el.dataset.word || el.querySelector('.label')?.textContent || '';
 
-  /* ---------- Hint overlay (reversed directions) ---------- */
+  /* ---------- Hint overlay (Phase 2 grows CLOCKWISE) ---------- */
   function ensureHintOverlay(btn){
     if (!btn.isConnected || btn.offsetWidth === 0 || btn.offsetHeight === 0){
       requestAnimationFrame(() => ensureHintOverlay(btn));
@@ -335,9 +335,9 @@ button:disabled{ opacity:.5; cursor:not-allowed }
       path.style.strokeDashoffset = `${off}`;
     };
 
-    /* REVERSED:
-       Phase 1 (0..0.5): shrink while moving COUNTER-CLOCKWISE  -> a = L*(1-q), offset = -L*q
-       Phase 2 (0.5..1): grow   while moving CLOCKWISE          -> a = L*q,     offset = +L*q
+    /* Direction logic:
+       Phase 1 (0..0.5): shrink while moving COUNTER-CLOCKWISE -> a = L*(1-q), off = -L*q
+       Phase 2 (0.5..1): grow   while moving CLOCKWISE         -> a = L*q,     off = -L*q   (THIS LINE enforces CW)
        Duration: 16s
     */
     const D = 16000;
@@ -350,7 +350,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
           setDash(L * (1 - q), -L * q);   // shrink CCW
         } else {
           const q = (p - 0.5) / 0.5;
-          setDash(L * q, L * q);          // grow CW
+          setDash(L * q, -L * q);         // grow CW (note the minus)
         }
         rafId = requestAnimationFrame(frame);
       };
