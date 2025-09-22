@@ -54,13 +54,59 @@ body{margin:0; font-family:'Montserrat',system-ui,-apple-system,Segoe UI,Roboto,
 }
 .topbar::after{
   content:""; position:absolute; left:50%; transform:translateX(-50%);
-  bottom:-0.5px; width:100vw; height:1px; background:var(--border);
+  bottom:-0.5px; width:100vw; height:1px; background:var(--border); pointer-events:none;
 }
-.logo{ height:36px; display:block }
-.date-slot select{
-  min-width:140px; border:1px solid var(--border); background:var(--card); color:var(--fg);
-  border-radius:var(--radius-input); padding:8px 10px; font-size:14px; cursor:pointer; appearance:none;
+    .title{ margin:10px 0; font-size:32px; font-weight:700; letter-spacing:.2px; text-transform:lowercase }
+    .date-slot select{ min-width:110px; white-space:nowrap }
+
+    :root{
+  /* controls logo height responsively */
+  --logo-h: clamp(28px, 6vw, 40px);
 }
+
+/* Brand/logo wrapper aligns with the date select */
+.topbar .brand{
+  display:flex;
+  align-items:center;
+  gap:8px; /* if you add text later */
+  text-decoration:none;
+}
+
+/* The image itself */
+.topbar .brand .logo{
+  display:block;
+  height: var(--logo-h);
+  width: auto;        /* keeps aspect ratio */
+}
+
+/* You can remove or keep .title styles.
+   If you keep them, they won't affect the image logo. */
+
+    
+    /* Inputs and buttons (radius vars applied) */
+    button{
+      border:1px solid var(--border);
+      background:var(--card);
+      color:var(--fg);
+      border-radius:var(--radius-btn);
+      padding:8px 10px;
+      font-size:14px;
+      font-weight:700;
+      cursor:pointer;
+      appearance:none;
+    }
+    button:disabled{ opacity:.5; cursor:not-allowed }
+
+    select{
+      border:1px solid var(--border);
+      background:var(--card);
+      color:var(--fg);
+      border-radius:var(--radius-input);
+      padding:8px 10px;
+      font-size:14px;
+      cursor:pointer;
+      appearance:none;
+    }
 
 /* Actions */
 .actions{ display:flex; justify-content:center; align-items:center; gap:8px; margin-top:12px }
@@ -83,19 +129,18 @@ button{
 }
 @keyframes btnFlow{ 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
 
-/* Grid & tiles */
-.grid{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; max-width:1200px; margin:0 auto }
-.tile{
-  position:relative;
-  height:var(--tile-h); border:1px solid var(--border); border-radius:var(--radius-tile); background:var(--card);
-  font-weight:700; font-size:var(--tile-font); letter-spacing:.2px; padding:0 10px;
-  display:flex; align-items:center; justify-content:center; white-space:nowrap;
-  overflow:hidden;
-  box-shadow:0 1px 2px rgba(0,0,0,.05); transition:background .15s ease,border-color .15s ease,transform .15s ease;
-  color:var(--fg); user-select:none;
-}
-.tile.hint{ overflow:visible; } /* let the 1px ring overlay sit outside */
-.tile:focus-visible{ outline:2px solid var(--focus); outline-offset:2px }
+
+    /* Grid & tiles */
+    .grid{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; max-width:1200px; margin:0 auto }
+    .tile{
+      height:var(--tile-h); border:1px solid var(--border); border-radius:var(--radius-tile); background:var(--card);
+      font-weight:700; font-size:var(--tile-font); letter-spacing:.2px; padding:0 10px;
+      display:flex; align-items:center; justify-content:center; white-space:nowrap; overflow:hidden;
+      box-shadow:0 1px 2px rgba(0,0,0,.05); transition:background .15s ease,border-color .15s ease,transform .15s ease;
+      color:var(--fg); user-select:none;
+    }
+    .tile:focus-visible{ outline:2px solid var(--focus); outline-offset:2px }
+    .tile.solved{ opacity:.95 }
 
 /* Animated gradient BORDER for selected & hinted tiles */
 .tile.sel{
@@ -178,13 +223,31 @@ button{
 <body>
   <div class="wrap">
     <div class="topbar">
-      <!-- Replace src with your image path -->
-      <img class="logo" id="app-logo" src="assets/logo.svg" alt="Connect" />
+<a class="brand" href="./" aria-label="Connect home">
+  <img
+    class="logo"
+    src="logo.png"
+    srcset="logo.png 1x, logo@2x.png 2x"
+    alt="Connect"
+    decoding="async"
+    fetchpriority="high"
+  />
+  <span class="sr-only">connect</span>
+</a>
       <div class="date-slot">
         <label for="puzzle-select" class="sr-only">Choose puzzle</label>
         <select id="puzzle-select" aria-label="Choose puzzle"></select>
       </div>
     </div>
+
+    <div id="solved" class="solved-list" aria-live="polite"></div>
+    <div id="grid" class="grid" role="grid" aria-label="Connections grid of 16 tiles"></div>
+
+    <div class="actions">
+      <button id="btn-help"  class="help-btn"  title="Reveal two tiles">Help</button>
+      <button id="btn-check" class="check-btn" title="Check selected tiles" aria-disabled="true">Check</button>
+    </div>
+  </div>
 
     <div id="grid" class="grid" role="grid" aria-label="Connections grid of 16 tiles"></div>
 
@@ -539,3 +602,4 @@ button{
 </script>
 </body>
 </html>
+
