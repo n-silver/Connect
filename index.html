@@ -289,7 +289,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
 
   const getWord = el => el.dataset.word || el.querySelector('.label')?.textContent || '';
 
-  /* ---------- Hint overlay (1px ring, wipe covers whole ring) ---------- */
+  /* ---------- Hint overlay (1px ring, custom sweep animation) ---------- */
   function ensureHintOverlay(btn){
     if (!btn.isConnected || btn.offsetWidth === 0 || btn.offsetHeight === 0){
       requestAnimationFrame(() => ensureHintOverlay(btn));
@@ -313,7 +313,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
     const W = Math.max(1, Math.round(rect.width));
     const H = Math.max(1, Math.round(rect.height));
 
-    // Path along OUTER edge of the ring
+    // Path along OUTER edge of the ring (clockwise)
     const rOuter = Math.max(0, tileRadius + ringPx);
     const d = [
       `M ${W/2},0`,
@@ -351,15 +351,26 @@ button:disabled{ opacity:.5; cursor:not-allowed }
       path.style.strokeDashoffset = `${off}`;
     };
 
-    const D = 3600; // ms per cycle
+    /* Animation:
+       Phase 1 (0..0.5): shrink while moving CLOCKWISE  -> a = L*(1-q), offset = +L*q
+       Phase 2 (0.5..1): reverse of phase 1 (grow CCW) -> a = L*q,     offset = -L*q
+       Slowed to 16s to match other animations.
+    */
+    const D = 16000; // ms per full cycle
     let rafId = 0;
     const loop = start => {
       const frame = ts => {
-        const p = ((ts - start) % D) / D;
+        const p = ((ts - start) % D) / D; // 0..1
         if (p < 0.5){
-          const q = p / 0.5; setDash(L * (1 - q), 0);     // reveal
+          const q = p / 0.5;              // 0..1
+          const a = L * (1 - q);          // shrink
+          const off = L * q;              // move clockwise
+          setDash(a, off);
         } else {
-          const q = (p - 0.5) / 0.5; setDash(L * q, -L * q); // refill clockwise
+          const q = (p - 0.5) / 0.5;      // 0..1
+          const a = L * q;                // grow
+          const off = -L * q;             // move counter-clockwise
+          setDash(a, off);
         }
         rafId = requestAnimationFrame(frame);
       };
