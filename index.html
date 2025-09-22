@@ -10,12 +10,13 @@
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet" />
 
 <style>
+/* -------------------- Design tokens -------------------- */
 :root{
   /* Base UI */
   --bg:#fafafa; --fg:#111; --muted:#6b7280; --card:#fff; --border:#e5e7eb; --focus:#0b57d0;
   --tile-font:14px; --tile-font-min:10px; --tile-h:70px;
 
-  /* Radius knobs */
+  /* Radii */
   --radius:6px;
   --radius-btn:var(--radius);
   --radius-input:var(--radius);
@@ -28,7 +29,7 @@
   --pastel-pink-bg:#f4e6ff;   --pastel-pink-border:#dac6ff;   --pastel-pink-fg:#291d3a;
   --pastel-green-bg:#e6f7e6;  --pastel-green-border:#c9ebc9;  --pastel-green-fg:#0f2a0f;
 
-  /* Rainbow border colours */
+  /* Rainbow ring colors */
   --ring-yellow: var(--pastel-yellow-border);
   --ring-green:  var(--pastel-green-border);
   --ring-blue:   var(--pastel-blue-border);
@@ -39,15 +40,24 @@
   --hint-ring:1px; /* hinted tiles */
 
   /* Buttons */
-  --btn-ready-fg:#fff; /* Check text becomes white when ready */
+  --btn-ready-fg:#fff; /* Check text when ready */
+
+  /* Logo */
+  --logo-h: clamp(28px, 6vw, 40px);
 }
 
+/* -------------------- Base -------------------- */
 html,body{height:100%}
 *,*::before,*::after{box-sizing:border-box; -webkit-text-fill-color:currentColor}
-body{margin:0; font-family:'Montserrat',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:var(--fg)}
+body{
+  margin:0;
+  font-family:'Montserrat',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  background:var(--bg);
+  color:var(--fg);
+}
 .wrap{max-width:1200px; margin:0 auto; padding:16px}
 
-/* Top bar */
+/* -------------------- Top bar -------------------- */
 .topbar{
   display:flex; align-items:center; justify-content:space-between; gap:12px;
   padding-bottom:8px; margin-bottom:16px; position:relative;
@@ -56,95 +66,55 @@ body{margin:0; font-family:'Montserrat',system-ui,-apple-system,Segoe UI,Roboto,
   content:""; position:absolute; left:50%; transform:translateX(-50%);
   bottom:-0.5px; width:100vw; height:1px; background:var(--border); pointer-events:none;
 }
-    .title{ margin:10px 0; font-size:32px; font-weight:700; letter-spacing:.2px; text-transform:lowercase }
-    .date-slot select{ min-width:110px; white-space:nowrap }
-
-    :root{
-  /* controls logo height responsively */
-  --logo-h: clamp(28px, 6vw, 40px);
+.topbar .brand{ display:flex; align-items:center; gap:8px; text-decoration:none }
+.topbar .brand .logo{ display:block; height:var(--logo-h); width:auto }
+.date-slot select{
+  min-width:110px; white-space:nowrap;
+  border:1px solid var(--border); background:var(--card); color:var(--fg);
+  border-radius:var(--radius-input); padding:8px 10px; font-size:14px; cursor:pointer; appearance:none;
 }
 
-/* Brand/logo wrapper aligns with the date select */
-.topbar .brand{
-  display:flex;
-  align-items:center;
-  gap:8px; /* if you add text later */
-  text-decoration:none;
-}
-
-/* The image itself */
-.topbar .brand .logo{
-  display:block;
-  height: var(--logo-h);
-  width: auto;        /* keeps aspect ratio */
-}
-
-/* You can remove or keep .title styles.
-   If you keep them, they won't affect the image logo. */
-
-    
-    /* Inputs and buttons (radius vars applied) */
-    button{
-      border:1px solid var(--border);
-      background:var(--card);
-      color:var(--fg);
-      border-radius:var(--radius-btn);
-      padding:8px 10px;
-      font-size:14px;
-      font-weight:700;
-      cursor:pointer;
-      appearance:none;
-    }
-    button:disabled{ opacity:.5; cursor:not-allowed }
-
-    select{
-      border:1px solid var(--border);
-      background:var(--card);
-      color:var(--fg);
-      border-radius:var(--radius-input);
-      padding:8px 10px;
-      font-size:14px;
-      cursor:pointer;
-      appearance:none;
-    }
-
-/* Actions */
+/* -------------------- Actions -------------------- */
 .actions{ display:flex; justify-content:center; align-items:center; gap:8px; margin-top:12px }
 button{
   border:1px solid var(--border); background:var(--card); color:var(--fg);
   border-radius:var(--radius-btn); padding:10px 16px; font-size:14px; font-weight:700; cursor:pointer;
 }
+button:disabled{ opacity:.5; cursor:not-allowed }
 .check-btn.ready{
   border:1px solid var(--border);
-  color: var(--btn-ready-fg); /* text white when ready */
-  background: linear-gradient(120deg,
+  color:var(--btn-ready-fg);
+  background:linear-gradient(120deg,
     var(--ring-yellow) 0%,
     var(--ring-green)  25%,
     var(--ring-blue)   50%,
     var(--ring-pink)   75%,
-    var(--ring-yellow) 100%
-  );
-  background-size: 320% 320%;
-  animation: btnFlow 16s ease-in-out infinite;
+    var(--ring-yellow) 100%);
+  background-size:320% 320%;
+  animation:btnFlow 16s ease-in-out infinite;
 }
 @keyframes btnFlow{ 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
 
+/* -------------------- Grid & tiles -------------------- */
+.grid{
+  display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px;
+  max-width:1200px; margin:0 auto;
+}
+.tile{
+  position:relative;
+  height:var(--tile-h); border:1px solid var(--border); border-radius:var(--radius-tile); background:var(--card);
+  font-weight:700; font-size:var(--tile-font); letter-spacing:.2px; padding:0 10px;
+  display:flex; align-items:center; justify-content:center; white-space:nowrap; overflow:hidden;
+  box-shadow:0 1px 2px rgba(0,0,0,.05); transition:background .15s ease,border-color .15s ease,transform .15s ease;
+  color:var(--fg); user-select:none;
+}
+.tile:focus-visible{ outline:2px solid var(--focus); outline-offset:2px }
+.tile.solved{ opacity:.95 }
 
-    /* Grid & tiles */
-    .grid{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; max-width:1200px; margin:0 auto }
-    .tile{
-      height:var(--tile-h); border:1px solid var(--border); border-radius:var(--radius-tile); background:var(--card);
-      font-weight:700; font-size:var(--tile-font); letter-spacing:.2px; padding:0 10px;
-      display:flex; align-items:center; justify-content:center; white-space:nowrap; overflow:hidden;
-      box-shadow:0 1px 2px rgba(0,0,0,.05); transition:background .15s ease,border-color .15s ease,transform .15s ease;
-      color:var(--fg); user-select:none;
-    }
-    .tile:focus-visible{ outline:2px solid var(--focus); outline-offset:2px }
-    .tile.solved{ opacity:.95 }
-
-/* Animated gradient BORDER for selected & hinted tiles */
-.tile.sel{
-  border: var(--sel-ring) solid transparent;
+/* Animated gradient borders */
+.tile.sel,
+.tile.hint{
+  border: var(--sel-ring) solid transparent; /* default for .sel; .hint overrides width below */
   border-radius: var(--radius-tile);
   background:
     linear-gradient(var(--card), var(--card)) padding-box,
@@ -153,38 +123,24 @@ button{
       var(--ring-green)  25%,
       var(--ring-blue)   50%,
       var(--ring-pink)   75%,
-      var(--ring-yellow) 100%
-    ) border-box;
-  background-size: 100% 100%, 320% 320%;
-  background-position: 0 0, 0% 50%;
-  animation: tileBorderFlow 16s ease-in-out infinite;
+      var(--ring-yellow) 100%) border-box;
+  background-size:100% 100%, 320% 320%;
+  background-position:0 0, 0% 50%;
+  animation:tileBorderFlow 16s ease-in-out infinite;
 }
 .tile.hint{
-  border: var(--hint-ring) solid transparent;
-  border-radius: var(--radius-tile);
-  background:
-    linear-gradient(var(--card), var(--card)) padding-box,
-    linear-gradient(120deg,
-      var(--ring-yellow) 0%,
-      var(--ring-green)  25%,
-      var(--ring-blue)   50%,
-      var(--ring-pink)   75%,
-      var(--ring-yellow) 100%
-    ) border-box;
-  background-size: 100% 100%, 320% 320%;
-  background-position: 0 0, 0% 50%;
-  animation: tileBorderFlow 16s ease-in-out infinite;
+  border-width:var(--hint-ring);
+  overflow:visible; /* allow overlay to extend into the ring */
 }
-
 @keyframes tileBorderFlow{ 0%{background-position:0 0, 0% 50%} 50%{background-position:0 0, 100% 50%} 100%{background-position:0 0, 0% 50%} }
 
-/* White wipe overlay (sits above content and fully blankets the ring) */
+/* Hint wipe overlay */
 .hint-overlay{
   position:absolute;
-  inset: calc(-1 * var(--hint-ring));                 /* extend to include ring area */
-  border-radius: calc(var(--radius-tile) + var(--hint-ring));
-  z-index: 4;
-  pointer-events: none;
+  inset:calc(-1 * var(--hint-ring));
+  border-radius:calc(var(--radius-tile) + var(--hint-ring));
+  z-index:4;
+  pointer-events:none;
 }
 .hint-overlay svg{ width:100%; height:100%; display:block }
 .hint-overlay .wipe{
@@ -193,27 +149,32 @@ button{
   vector-effect:non-scaling-stroke;
 }
 
-@media (prefers-reduced-motion: reduce){
-  .check-btn.ready{ animation:none }
-  .tile.sel,.tile.hint{ animation:none }
-}
-
-/* Solved groups */
+/* -------------------- Solved groups -------------------- */
 .solved-group{
   grid-column:1 / -1; padding:12px; border-radius:var(--radius-solved);
-  text-align:center; display:flex; flex-direction:column; gap:4px
+  text-align:center; display:flex; flex-direction:column; gap:4px;
 }
 .solved-title{ font-weight:700; font-size:14px; letter-spacing:.2px; margin:0 }
 .solved-words-line{ font-weight:500; font-size:14px; opacity:.95 }
 
-/* Pastel solved fills */
+/* Pastel fills */
 .tile.solved.solved-group.p-blue   { background:var(--pastel-blue-bg)!important;   border-color:var(--pastel-blue-border)!important;   color:var(--pastel-blue-fg)!important }
 .tile.solved.solved-group.p-yellow { background:var(--pastel-yellow-bg)!important; border-color:var(--pastel-yellow-border)!important; color:var(--pastel-yellow-fg)!important }
 .tile.solved.solved-group.p-pink   { background:var(--pastel-pink-bg)!important;   border-color:var(--pastel-pink-border)!important;   color:var(--pastel-pink-fg)!important }
 .tile.solved.solved-group.p-green  { background:var(--pastel-green-bg)!important;  border-color:var(--pastel-green-border)!important;  color:var(--pastel-green-fg)!important }
 
-.sr-only{ position:absolute!important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0 }
+/* -------------------- A11y -------------------- */
+.sr-only{
+  position:absolute!important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
+}
 
+/* -------------------- Motion prefs -------------------- */
+@media (prefers-reduced-motion:reduce){
+  .check-btn.ready{ animation:none }
+  .tile.sel,.tile.hint{ animation:none }
+}
+
+/* -------------------- Small screens -------------------- */
 @media (max-width:360px){
   :root{ --tile-font:13px; --tile-h:78px }
   .date-slot select{ min-width:160px }
@@ -223,17 +184,10 @@ button{
 <body>
   <div class="wrap">
     <div class="topbar">
-<a class="brand" href="./" aria-label="Connect home">
-  <img
-    class="logo"
-    src="logo.png"
-    srcset="logo.png 1x, logo@2x.png 2x"
-    alt="Connect"
-    decoding="async"
-    fetchpriority="high"
-  />
-  <span class="sr-only">connect</span>
-</a>
+      <a class="brand" href="./" aria-label="Connect home">
+        <img class="logo" src="logo.png" srcset="logo.png 1x, logo@2x.png 2x" alt="Connect" decoding="async" fetchpriority="high" />
+        <span class="sr-only">connect</span>
+      </a>
       <div class="date-slot">
         <label for="puzzle-select" class="sr-only">Choose puzzle</label>
         <select id="puzzle-select" aria-label="Choose puzzle"></select>
@@ -241,14 +195,6 @@ button{
     </div>
 
     <div id="solved" class="solved-list" aria-live="polite"></div>
-    <div id="grid" class="grid" role="grid" aria-label="Connections grid of 16 tiles"></div>
-
-    <div class="actions">
-      <button id="btn-help"  class="help-btn"  title="Reveal two tiles">Help</button>
-      <button id="btn-check" class="check-btn" title="Check selected tiles" aria-disabled="true">Check</button>
-    </div>
-  </div>
-
     <div id="grid" class="grid" role="grid" aria-label="Connections grid of 16 tiles"></div>
 
     <div class="actions">
@@ -284,17 +230,20 @@ button{
   function fitText(el){
     el.style.fontSize = BASE_SIZE + 'px';
     if (fits(el)) return;
-    let s = BASE_SIZE;
-    while (s > MIN_SIZE) { s--; el.style.fontSize = s + 'px'; if (fits(el)) break; }
+    for (let s=BASE_SIZE-1; s>=MIN_SIZE; s--){ el.style.fontSize = s + 'px'; if (fits(el)) break; }
   }
-  function fitAll(){ [...$$('.tile')].forEach(fitText); }
+  function fitAll(){ $$('.tile').forEach(fitText); }
   window.addEventListener('resize', () => { clearTimeout(window.__rf); window.__rf=setTimeout(fitAll, 80); });
 
   /* ---------- Data ---------- */
   async function fetchJSON(cands){
     const list = Array.isArray(cands)?cands:[cands];
     for (const url of list){
-      try{ const res = await fetch(url, { cache:'no-store' }); if (!res.ok) throw 0; return await res.json(); }catch{}
+      try{
+        const res = await fetch(url, { cache:'no-store' });
+        if (!res.ok) throw 0;
+        return await res.json();
+      }catch{}
     }
     throw new Error('fetch failed: '+list.join(', '));
   }
@@ -320,12 +269,7 @@ button{
 
   /* ---------- UI helpers ---------- */
   function setDates(dates){
-    sel.innerHTML = '';
-    for (const d of dates){
-      const o = document.createElement('option');
-      o.value = d; o.textContent = d;
-      sel.appendChild(o);
-    }
+    sel.innerHTML = dates.map(d => `<option value="${d}">${d}</option>`).join('');
   }
   function updateCheckUI(){
     const ready = selected.length === 4;
@@ -333,9 +277,8 @@ button{
     btnCheck.setAttribute('aria-disabled', ready ? 'false' : 'true');
   }
 
-  /* ---------- Hint overlay helpers ---------- */
+  /* ---------- Hint overlay (1px ring, wipe covers whole ring) ---------- */
   function ensureHintOverlay(btn){
-    // Ensure we measure only when connected & sized
     if (!btn.isConnected || btn.offsetWidth === 0 || btn.offsetHeight === 0){
       requestAnimationFrame(() => ensureHintOverlay(btn));
       return;
@@ -358,20 +301,19 @@ button{
     const W = Math.max(1, Math.round(rect.width));
     const H = Math.max(1, Math.round(rect.height));
 
-    const x = 0, y = 0, w = W, h = H;
+    // Outer edge path
     const rOuter = Math.max(0, tileRadius + ringPx);
-
     const d = [
-      `M ${x + w/2},${y}`,
-      `H ${x + w - rOuter}`,
-      `A ${rOuter} ${rOuter} 0 0 1 ${x + w},${y + rOuter}`,
-      `V ${y + h - rOuter}`,
-      `A ${rOuter} ${rOuter} 0 0 1 ${x + w - rOuter},${y + h}`,
-      `H ${x + rOuter}`,
-      `A ${rOuter} ${rOuter} 0 0 1 ${x},${y + h - rOuter}`,
-      `V ${y + rOuter}`,
-      `A ${rOuter} ${rOuter} 0 0 1 ${x + rOuter},${y}`,
-      `H ${x + w/2}`,
+      `M ${W/2},0`,
+      `H ${W - rOuter}`,
+      `A ${rOuter} ${rOuter} 0 0 1 ${W},${rOuter}`,
+      `V ${H - rOuter}`,
+      `A ${rOuter} ${rOuter} 0 0 1 ${W - rOuter},${H}`,
+      `H ${rOuter}`,
+      `A ${rOuter} ${rOuter} 0 0 1 0,${H - rOuter}`,
+      `V ${rOuter}`,
+      `A ${rOuter} ${rOuter} 0 0 1 ${rOuter},0`,
+      `H ${W/2}`,
       `Z`
     ].join(' ');
 
@@ -385,37 +327,36 @@ button{
     path.setAttribute('d', d);
     path.setAttribute('class', 'wipe');
     path.style.stroke = cardColor;
-    path.style.strokeWidth = (ringPx * 2 + 1) + 'px'; // blanket the 1px ring fully
+    path.style.strokeWidth = (ringPx * 2 + 1) + 'px';
 
     svg.appendChild(path);
     wrap.appendChild(svg);
 
-    // Animate using real length in px
     const L = path.getTotalLength();
-    function setDash(len, off){
+    const setDash = (len, off=0) => {
       const a = Math.max(0, Math.min(L, len));
       path.style.strokeDasharray  = `${a} ${Math.max(0, L - a)}`;
-      path.style.strokeDashoffset = `${off || 0}`;
-    }
-    const D = 3600; // ms per cycle
+      path.style.strokeDashoffset = `${off}`;
+    };
+
+    const D = 3600; // ms
     let rafId = 0;
-    function loop(start){
-      function frame(ts){
+    const loop = start => {
+      const frame = ts => {
         const p = ((ts - start) % D) / D;
         if (p < 0.5){
           const q = p / 0.5;
-          setDash(L * (1 - q), 0);
+          setDash(L * (1 - q), 0);     // reveal
         } else {
           const q = (p - 0.5) / 0.5;
-          setDash(L * q, -L * q);
+          setDash(L * q, -L * q);      // refill clockwise
         }
         rafId = requestAnimationFrame(frame);
-      }
+      };
       rafId = requestAnimationFrame(frame);
-    }
+    };
     requestAnimationFrame(loop);
 
-    // Cleanup if tile removed from DOM
     const mo = new MutationObserver(() => {
       if (!document.body.contains(btn)){
         cancelAnimationFrame(rafId);
@@ -450,56 +391,49 @@ button{
       const wrap = document.createElement('div');
       wrap.className = `tile solved solved-group p-${['blue','yellow','pink','green'][idx] || 'yellow'}`;
       wrap.style.gridColumn = '1 / -1';
-      const t = document.createElement('div'); t.className='solved-title';      t.textContent = g.title;
-      const w = document.createElement('div'); w.className='solved-words-line'; w.textContent = g.words.join(', ');
-      wrap.appendChild(t); wrap.appendChild(w); grid.appendChild(wrap);
+      wrap.innerHTML = `<div class="solved-title">${g.title}</div><div class="solved-words-line">${g.words.join(', ')}</div>`;
+      grid.appendChild(wrap);
     });
 
     // Remaining tiles
     for (const word of layout){
       const btn = document.createElement('button');
-      btn.type = 'button'; btn.className = 'tile'; btn.textContent = word;
-
+      btn.type = 'button';
+      btn.className = 'tile';
+      btn.textContent = word;
       btn.addEventListener('click', () => toggleWord(btn, word));
       grid.appendChild(btn);
-
-      // Apply hint (1px ring) if this word is currently hinted
       applyHintStateForWord(btn, word);
     }
+
     fitAll();
   }
 
   /* ---------- Game logic ---------- */
-  function isSolvedWord(w){ return solvedGroups.some(g => g.words.includes(w)); }
-  function buildInitialLayout(p){ const words = p.categories.flatMap(c => c.words); shuffle(words); layout = words; }
+  const isSolvedWord = w => solvedGroups.some(g => g.words.includes(w));
+  const buildInitialLayout = p => { layout = shuffle(p.categories.flatMap(c => c.words)); };
 
   function toggleWord(el, word){
     if (isSolvedWord(word)) return;
 
-    const wasSelected = el.classList.contains('sel');
-
-    if (wasSelected){
+    if (el.classList.contains('sel')){
       // Deselect
       el.classList.remove('sel');
-      const idx = selected.indexOf(word);
-      if (idx >= 0) selected.splice(idx,1);
-      // Restore hint (if this word is part of stagedHelp)
-      applyHintStateForWord(el, word);
+      const i = selected.indexOf(word);
+      if (i >= 0) selected.splice(i,1);
+      applyHintStateForWord(el, word); // restore hint if applicable
     } else {
-      // If already 4 selected, clear them (and restore hints where appropriate)
+      // If already 4 selected, clear them (restoring hints)
       if (selected.length === 4){
-        const selectedEls = $$('.tile.sel');
-        selected = [];
-        selectedEls.forEach(n => {
+        $$('.tile.sel').forEach(n => {
           n.classList.remove('sel');
-          const w = n.textContent;
-          applyHintStateForWord(n, w);
+          applyHintStateForWord(n, n.textContent);
         });
+        selected = [];
       }
-      // Select this one
+      // Select this one, disable hint styling while selected
       el.classList.add('sel');
       selected.push(word);
-      // Turn OFF hint styling while selected
       removeHintOverlay(el);
     }
 
@@ -510,25 +444,23 @@ button{
     if (!currentPuzzle || selected.length !== 4) return;
     const pick = new Set(selected);
     const match = currentPuzzle.categories.find(c => c.words.every(w => pick.has(w)));
+
     if (match && !solvedGroups.some(g => g.title === match.title)){
       if (stagedHelp && stagedHelp.group && stagedHelp.group.title === match.title) stagedHelp = null;
       solvedGroups.push(match);
       const gset = new Set(match.words);
       layout = layout.filter(w => !gset.has(w));
       selected = [];
-      updateCheckUI();
       renderGrid();
     } else {
-      // Wrong pick: clear selection & restore hint styles where applicable
-      const selectedEls = $$('.tile.sel');
-      selectedEls.forEach(n => {
+      // Wrong pick: clear selection & restore hint styles
+      $$('.tile.sel').forEach(n => {
         n.classList.remove('sel');
-        const w = n.textContent;
-        applyHintStateForWord(n, w);
+        applyHintStateForWord(n, n.textContent);
       });
       selected = [];
-      updateCheckUI();
     }
+    updateCheckUI();
   }
 
   function handleHelp(){
@@ -544,17 +476,17 @@ button{
       }
       stagedHelp = null;
       selected = [];
-      updateCheckUI();
       renderGrid();
+      updateCheckUI();
       return;
     }
 
-    // First press: stage random unsolved group, bring 2 words to front (hinted)
+    // First press: stage a random unsolved group; hint two words (move to front)
     const unsolved = currentPuzzle.categories.filter(c => !solvedGroups.some(g => g.title === c.title));
     if (!unsolved.length) return;
+
     const group = unsolved[Math.floor(Math.random()*unsolved.length)];
-    const words = [...group.words];
-    for (let i=words.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [words[i],words[j]]=[words[j],words[i]]; }
+    const words = shuffle([...group.words]);
     const two = words.slice(0,2);
 
     stagedHelp = { group, hinted:new Set(two) };
@@ -592,14 +524,13 @@ button{
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    sel      = document.getElementById('puzzle-select');
-    grid     = document.getElementById('grid');
-    btnCheck = document.getElementById('btn-check');
-    btnHelp  = document.getElementById('btn-help');
+    sel      = $('#puzzle-select');
+    grid     = $('#grid');
+    btnCheck = $('#btn-check');
+    btnHelp  = $('#btn-help');
     boot();
   });
 })();
 </script>
 </body>
 </html>
-
