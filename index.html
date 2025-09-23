@@ -226,11 +226,11 @@ button:disabled{ opacity:.5; cursor:not-allowed }
 (function(){
   /* -------------------- HINT OVERLAY CONFIG (tweak me) -------------------- */
   const HINTCFG = {
-    opacity: 0.55,        // 0..1  => strength of frosted wedge
-    opaquePct: 85,        // % of opaque section (before the transition)
-    clearPct: 15,         // % of fully clear section (after the transition)
-    featherPct: 6,        // % width of fade from opaque->clear (acts like your "coefficient")
-    speedDegPerSec: 22.5  // rotation speed (degrees per second), clockwise
+    opacity: 0.2,        // 0..1  => strength of frosted wedge
+    opaquePct: 80,        // % of opaque section (before the transition)
+    clearPct: 20,         // % of fully clear section (after the transition)
+    featherPct: 2,        // % width of fade from opaque->clear (acts like your "coefficient")
+    speedDegPerSec: 60  // rotation speed (degrees per second), clockwise
   };
   // Safety clamp so total stays sane
   (function clampHintCfg(c){
@@ -540,3 +540,4 @@ button:disabled{ opacity:.5; cursor:not-allowed }
 </script>
 </body>
 </html>
+
