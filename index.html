@@ -133,7 +133,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
 }
 @keyframes tileBorderFlow{ 0%{background-position:0 0, 0% 50%} 50%{background-position:0 0, 100% 50%} 100%{background-position:0 0, 0% 50%} }
 
-/* -------------------- Hinted overlay (rounded-rect stroke; only gradient rotates) -------------------- */
+/* -------------------- Hinted overlay (rounded-rect stroke; only gradient rotates via angle var) -------------------- */
 .hint-overlay{
   position:absolute;
   inset:calc(-1 * var(--hint-ring));
@@ -146,7 +146,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
   inset:0;
   border-radius:inherit;
 
-  /* The rotation happens by changing the conic 'from' angle via --angle; the element itself does not rotate */
+  /* Rotation happens by changing the conic 'from' angle via --angle; the element itself stays static */
   background:
     conic-gradient(
       from var(--angle, 0deg),
@@ -345,16 +345,28 @@ button:disabled{ opacity:.5; cursor:not-allowed }
     const W = Math.max(1, Math.round(rect.width));
     const H = Math.max(1, Math.round(rect.height));
 
-    // SVG: rounded-rect STROKE (white on transparent) — used directly as a mask image
-    const strokeW = ringPx * 2;
-    const rx = Math.max(0, tileRadius + ringPx);
-    const ry = rx;
+    /* Precise rounded-rect stroke:
+       - overlay outer radius = tileRadius + ringPx
+       - stroke width = ringPx * 2 (covers entire ring)
+       - centerline radius MUST be (outerRadius - strokeW/2)
+       This fixes corner slivers by aligning the mask exactly with the ring geometry.
+    */
+    const strokeW   = ringPx * 2;
+    const outerR    = tileRadius + ringPx;
+    const centerR   = Math.max(0, outerR - strokeW/2);  // crucial correction
+
+    // Half-pixel nudge to reduce rasterization seams on some DPRs
+    const x = strokeW/2;
+    const y = strokeW/2;
+    const w = W - strokeW;
+    const h = H - strokeW;
 
     const svg =
-      `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
-         <rect x="${strokeW/2}" y="${strokeW/2}" width="${W - strokeW}" height="${H - strokeW}"
-               rx="${rx}" ry="${ry}" fill="none"
-               stroke="white" stroke-width="${strokeW}" stroke-linejoin="round" stroke-linecap="butt"/>
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" shape-rendering="geometricPrecision">
+         <rect x="${x}" y="${y}" width="${w}" height="${h}"
+               rx="${centerR}" ry="${centerR}" fill="none"
+               stroke="white" stroke-width="${strokeW}"
+               stroke-linejoin="round" stroke-linecap="butt"/>
        </svg>`;
 
     const dataUrl = `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}")`;
@@ -371,7 +383,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
     const tick = ts => {
       if (!start) start = ts;
       const angle = ((ts - start) / 1000) * speed % 360;
-      sweep.style.setProperty('--angle', angle + 'deg'); // no element transform!
+      sweep.style.setProperty('--angle', angle + 'deg'); // element is static; only gradient rotates
       if (document.body.contains(wrap)) rafId = requestAnimationFrame(tick);
     };
     rafId = requestAnimationFrame(tick);
