@@ -133,7 +133,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
 }
 @keyframes tileBorderFlow{ 0%{background-position:0 0, 0% 50%} 50%{background-position:0 0, 100% 50%} 100%{background-position:0 0, 0% 50%} }
 
-/* -------------------- Hinted overlay (rounded-rect stroke; only gradient rotates via angle var) -------------------- */
+/* -------------------- Hinted overlay (rounded-rect donut mask; only gradient rotates) -------------------- */
 .hint-overlay{
   position:absolute;
   inset:calc(-1 * var(--hint-ring));
@@ -146,7 +146,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
   inset:0;
   border-radius:inherit;
 
-  /* Rotation happens by changing the conic 'from' angle via --angle; the element itself stays static */
+  /* Rotate by changing the conic 'from' angle; element stays static */
   background:
     conic-gradient(
       from var(--angle, 0deg),
@@ -157,7 +157,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
       rgba(255,255,255,0) 100%
     );
 
-  /* Mask image (alpha) is a rounded-rect stroke that matches the ring geometry */
+  /* Donut mask supplied from JS as an inline SVG (white ring = show, black = hide) */
   mask-size:100% 100%; -webkit-mask-size:100% 100%;
   mask-repeat:no-repeat; -webkit-mask-repeat:no-repeat;
   mask-position:0 0; -webkit-mask-position:0 0;
@@ -305,7 +305,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
   }
   const getWord = el => el.dataset.word || el.querySelector('.label')?.textContent || '';
 
-  /* -------------------- Conic-gradient hint overlay -------------------- */
+  /* -------------------- Conic-gradient hint overlay (donut mask) -------------------- */
   function buildConicStopsVars(style){
     const A = HINTCFG.opaquePct;   // opaque sector %
     const F = HINTCFG.featherPct;  // transition width %
@@ -340,33 +340,25 @@ button:disabled{ opacity:.5; cursor:not-allowed }
     const tileRadius = parseFloat(csBtn.borderRadius) ||
                        parseFloat(csRoot.getPropertyValue('--radius-tile')) || 0;
 
-    // Measure overlay box
+    // Measure overlay box (overlay = button rect expanded by ringPx on all sides)
     const rect = wrap.getBoundingClientRect();
     const W = Math.max(1, Math.round(rect.width));
     const H = Math.max(1, Math.round(rect.height));
 
-    /* Precise rounded-rect stroke:
-       - overlay outer radius = tileRadius + ringPx
-       - stroke width = ringPx * 2 (covers entire ring)
-       - centerline radius MUST be (outerRadius - strokeW/2)
-       This fixes corner slivers by aligning the mask exactly with the ring geometry.
+    /* Donut mask:
+       - Outer rounded-rect = overlay bounds, radius R_outer = tileRadius + ringPx
+       - Inner rounded-rect = inset by 2*ringPx, radius R_inner = tileRadius
+       This matches CSS border math exactly and covers the very outside corner pixels.
     */
-    const strokeW   = ringPx * 2;
-    const outerR    = tileRadius + ringPx;
-    const centerR   = Math.max(0, outerR - strokeW/2);  // crucial correction
-
-    // Half-pixel nudge to reduce rasterization seams on some DPRs
-    const x = strokeW/2;
-    const y = strokeW/2;
-    const w = W - strokeW;
-    const h = H - strokeW;
+    const R_outer = tileRadius + ringPx;
+    const inset   = ringPx * 2;
+    const R_inner = Math.max(0, tileRadius);
 
     const svg =
       `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" shape-rendering="geometricPrecision">
-         <rect x="${x}" y="${y}" width="${w}" height="${h}"
-               rx="${centerR}" ry="${centerR}" fill="none"
-               stroke="white" stroke-width="${strokeW}"
-               stroke-linejoin="round" stroke-linecap="butt"/>
+         <rect x="0" y="0" width="${W}" height="${H}" rx="${R_outer}" ry="${R_outer}" fill="white"/>
+         <rect x="${inset}" y="${inset}" width="${Math.max(0, W - 2*inset)}" height="${Math.max(0, H - 2*inset)}"
+               rx="${R_inner}" ry="${R_inner}" fill="black"/>
        </svg>`;
 
     const dataUrl = `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}")`;
@@ -383,7 +375,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
     const tick = ts => {
       if (!start) start = ts;
       const angle = ((ts - start) / 1000) * speed % 360;
-      sweep.style.setProperty('--angle', angle + 'deg'); // element is static; only gradient rotates
+      sweep.style.setProperty('--angle', angle + 'deg');
       if (document.body.contains(wrap)) rafId = requestAnimationFrame(tick);
     };
     rafId = requestAnimationFrame(tick);
@@ -456,13 +448,11 @@ button:disabled{ opacity:.5; cursor:not-allowed }
     if (isSolvedWord(word)) return;
 
     if (el.classList.contains('sel')){
-      // Deselect
       el.classList.remove('sel');
       const i = selected.indexOf(word);
       if (i >= 0) selected.splice(i,1);
       applyHintStateForWord(el, word); // restore hint if applicable
     } else {
-      // If already 4 selected, clear them (restoring hints)
       if (selected.length === 4){
         $$('.tile.sel').forEach(n => {
           n.classList.remove('sel');
@@ -470,7 +460,6 @@ button:disabled{ opacity:.5; cursor:not-allowed }
         });
         selected = [];
       }
-      // Select this one
       el.classList.add('sel');
       selected.push(word);
       removeHintOverlay(el); // hint off while selected
@@ -492,7 +481,6 @@ button:disabled{ opacity:.5; cursor:not-allowed }
       selected = [];
       renderGrid();
     } else {
-      // Wrong pick: clear selection & restore hints
       $$('.tile.sel').forEach(n => {
         n.classList.remove('sel');
         applyHintStateForWord(n, getWord(n));
