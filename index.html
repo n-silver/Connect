@@ -133,7 +133,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
 }
 @keyframes tileBorderFlow{ 0%{background-position:0 0, 0% 50%} 50%{background-position:0 0, 100% 50%} 100%{background-position:0 0, 0% 50%} }
 
-/* -------------------- Hinted overlay (rounded-rect donut mask; only gradient rotates) -------------------- */
+/* -------------------- Hinted overlay (donut mask with tiny outer bleed) -------------------- */
 .hint-overlay{
   position:absolute;
   inset:calc(-1 * var(--hint-ring));
@@ -146,7 +146,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
   inset:0;
   border-radius:inherit;
 
-  /* Rotate by changing the conic 'from' angle; element stays static */
+  /* Rotate by changing the conic 'from' angle; the element stays static */
   background:
     conic-gradient(
       from var(--angle, 0deg),
@@ -157,7 +157,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
       rgba(255,255,255,0) 100%
     );
 
-  /* Donut mask supplied from JS as an inline SVG (white ring = show, black = hide) */
+  /* Mask image (luminance) is supplied from JS; it's a rounded-rect donut with outer bleed */
   mask-size:100% 100%; -webkit-mask-size:100% 100%;
   mask-repeat:no-repeat; -webkit-mask-repeat:no-repeat;
   mask-position:0 0; -webkit-mask-position:0 0;
@@ -226,6 +226,9 @@ button:disabled{ opacity:.5; cursor:not-allowed }
     featherPct: 8,       // % width of fade (transition softness)
     speedDegPerSec: 22.5 // rotation speed (degrees per second), clockwise
   };
+  // Tiny outer overdraw to kill DPR/AA slivers at outer corners
+  const MASK_BLEED_PX = 0.85; // ↑ increase to 1.0 if you ever see a seam on certain devices
+
   (function clampHintCfg(c){
     c.opacity      = Math.max(0, Math.min(1, c.opacity));
     c.opaquePct    = Math.max(0, Math.min(100, c.opaquePct));
@@ -305,7 +308,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
   }
   const getWord = el => el.dataset.word || el.querySelector('.label')?.textContent || '';
 
-  /* -------------------- Conic-gradient hint overlay (donut mask) -------------------- */
+  /* -------------------- Conic-gradient hint overlay (donut mask with outer bleed) -------------------- */
   function buildConicStopsVars(style){
     const A = HINTCFG.opaquePct;   // opaque sector %
     const F = HINTCFG.featherPct;  // transition width %
@@ -340,25 +343,36 @@ button:disabled{ opacity:.5; cursor:not-allowed }
     const tileRadius = parseFloat(csBtn.borderRadius) ||
                        parseFloat(csRoot.getPropertyValue('--radius-tile')) || 0;
 
-    // Measure overlay box (overlay = button rect expanded by ringPx on all sides)
+    // Measure overlay box
     const rect = wrap.getBoundingClientRect();
     const W = Math.max(1, Math.round(rect.width));
     const H = Math.max(1, Math.round(rect.height));
 
-    /* Donut mask:
-       - Outer rounded-rect = overlay bounds, radius R_outer = tileRadius + ringPx
-       - Inner rounded-rect = inset by 2*ringPx, radius R_inner = tileRadius
-       This matches CSS border math exactly and covers the very outside corner pixels.
+    /* Donut mask with outer bleed:
+       - Outer rounded-rect: expands by MASK_BLEED_PX in each direction; radius += MASK_BLEED_PX
+       - Inner rounded-rect: exact inner edge (no bleed) to avoid showing overlay inside tile face
     */
-    const R_outer = tileRadius + ringPx;
-    const inset   = ringPx * 2;
+    const outerBleed = MASK_BLEED_PX;
+    const R_outer = tileRadius + ringPx + outerBleed;
+    const inset   = ringPx * 2;           // inner edge inset (no bleed)
     const R_inner = Math.max(0, tileRadius);
+
+    const outerX = -outerBleed;
+    const outerY = -outerBleed;
+    const outerW = W + outerBleed * 2;
+    const outerH = H + outerBleed * 2;
+
+    const innerX = inset;
+    const innerY = inset;
+    const innerW = Math.max(0, W - 2*inset);
+    const innerH = Math.max(0, H - 2*inset);
 
     const svg =
       `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" shape-rendering="geometricPrecision">
-         <rect x="0" y="0" width="${W}" height="${H}" rx="${R_outer}" ry="${R_outer}" fill="white"/>
-         <rect x="${inset}" y="${inset}" width="${Math.max(0, W - 2*inset)}" height="${Math.max(0, H - 2*inset)}"
-               rx="${R_inner}" ry="${R_inner}" fill="black"/>
+         <!-- White outer RR slightly oversized -->
+         <rect x="${outerX}" y="${outerY}" width="${outerW}" height="${outerH}" rx="${R_outer}" ry="${R_outer}" fill="white"/>
+         <!-- Black inner RR exactly at tile inner edge -->
+         <rect x="${innerX}" y="${innerY}" width="${innerW}" height="${innerH}" rx="${R_inner}" ry="${R_inner}" fill="black"/>
        </svg>`;
 
     const dataUrl = `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}")`;
