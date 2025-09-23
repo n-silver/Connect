@@ -41,7 +41,11 @@
 /* -------------------- Base -------------------- */
 html,body{height:100%}
 *,*::before,*::after{box-sizing:border-box; -webkit-text-fill-color:currentColor}
-body{margin:0; font-family:'Montserrat',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:var(--fg)}
+body{
+  margin:0;
+  font-family:'Montserrat',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  background:var(--bg); color:var(--fg);
+}
 .wrap{max-width:1200px; margin:0 auto; padding:16px}
 
 /* -------------------- Top bar -------------------- */
@@ -73,19 +77,14 @@ button:disabled{ opacity:.5; cursor:not-allowed }
   color:var(--btn-ready-fg);
   background:linear-gradient(120deg,
     var(--ring-yellow) 0%,
-    var(--ring-pink)   25%,
+    var(--ring-green)  25%,
     var(--ring-blue)   50%,
-    var(--ring-green)  75%,
+    var(--ring-pink)   75%,
     var(--ring-yellow) 100%);
   background-size:320% 320%;
   animation:btnFlow 16s ease-in-out infinite;
 }
-/* Reversed button gradient flow (right -> left) */
-@keyframes btnFlow{
-  0%{background-position:100% 50%}
-  50%{background-position:0% 50%}
-  100%{background-position:100% 50%}
-}
+@keyframes btnFlow{ 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
 
 /* -------------------- Grid & tiles -------------------- */
 .grid{
@@ -103,7 +102,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
 .tile:focus-visible{ outline:2px solid var(--focus); outline-offset:2px }
 .tile.solved{ opacity:.95 }
 
-/* Only the word should be measured/resized */
+/* Only measure/resize the word */
 .tile .label{
   display:inline-block;
   max-width:100%;
@@ -111,7 +110,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
   pointer-events:none;
 }
 
-/* Animated gradient borders */
+/* Animated gradient borders (selected + hinted) */
 .tile.sel,
 .tile.hint{
   border: var(--sel-ring) solid transparent; /* default = selected thickness */
@@ -125,33 +124,50 @@ button:disabled{ opacity:.5; cursor:not-allowed }
       var(--ring-pink)   75%,
       var(--ring-yellow) 100%) border-box;
   background-size:100% 100%, 320% 320%;
-  background-position:0 0, 100% 50%; /* start at right for reversed flow */
+  background-position:0 0, 0% 50%;
   animation:tileBorderFlow 16s ease-in-out infinite;
 }
 .tile.hint{
-  border-width:var(--hint-ring);
-  overflow:visible; /* allow overlay to extend into ring */
+  border-width:var(--hint-ring);   /* 1px hinted ring */
+  overflow:visible;                /* allow overlay to sit on ring */
 }
-/* Reversed tile border flow (right -> left) */
-@keyframes tileBorderFlow{
-  0%{background-position:0 0, 100% 50%}
-  50%{background-position:0 0, 0% 50%}
-  100%{background-position:0 0, 100% 50%}
-}
+@keyframes tileBorderFlow{ 0%{background-position:0 0, 0% 50%} 50%{background-position:0 0, 100% 50%} 100%{background-position:0 0, 0% 50%} }
 
-/* Hint wipe overlay */
+/* Single overlay for hint (conic gradient donut that rotates) */
 .hint-overlay{
   position:absolute;
   inset:calc(-1 * var(--hint-ring));
   border-radius:calc(var(--radius-tile) + var(--hint-ring));
-  z-index:4;
   pointer-events:none;
+  z-index:4;
+  /* We draw the conic gradient on ::before so we can apply a radial mask cleanly */
 }
-.hint-overlay svg{ width:100%; height:100%; display:block }
-.hint-overlay .wipe{
-  fill:none;
-  stroke-linecap:butt;
-  vector-effect:non-scaling-stroke;
+.hint-overlay::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+
+  /* Updated from JS:
+     --angle: current rotation (deg)
+     --opa:   overlay alpha (0..1)
+     --opaquePct: % of opaque wedge
+     --clearPct:  % of clear wedge
+     --featherPct:% width of the transitional fade
+  */
+  background:
+    conic-gradient(
+      from var(--angle, 0deg),
+      rgba(255,255,255,var(--opa, .5)) 0%,
+      rgba(255,255,255,var(--opa, .5)) var(--opaqueStopA, 82%),
+      rgba(255,255,255,var(--midAlpha, .25)) var(--opaqueStopB, 85%),
+      rgba(255,255,255,0) var(--opaqueStopB, 85%),
+      rgba(255,255,255,0) 100%
+    );
+
+  /* Mask to a donut so overlay only covers the ring area (not tile face) */
+  -webkit-mask: radial-gradient(closest-side, transparent calc(100% - calc(var(--hint-ring) * 2) - 0.5px), #000 calc(100% - calc(var(--hint-ring) * 2) - 0.5px));
+          mask: radial-gradient(closest-side, transparent calc(100% - calc(var(--hint-ring) * 2) - 0.5px), #000 calc(100% - calc(var(--hint-ring) * 2) - 0.5px));
 }
 
 /* -------------------- Solved groups -------------------- */
@@ -208,14 +224,34 @@ button:disabled{ opacity:.5; cursor:not-allowed }
 
 <script>
 (function(){
+  /* -------------------- HINT OVERLAY CONFIG (tweak me) -------------------- */
+  const HINTCFG = {
+    opacity: 0.55,        // 0..1  => strength of frosted wedge
+    opaquePct: 85,        // % of opaque section (before the transition)
+    clearPct: 15,         // % of fully clear section (after the transition)
+    featherPct: 6,        // % width of fade from opaque->clear (acts like your "coefficient")
+    speedDegPerSec: 22.5  // rotation speed (degrees per second), clockwise
+  };
+  // Safety clamp so total stays sane
+  (function clampHintCfg(c){
+    c.opacity      = Math.max(0, Math.min(1, c.opacity));
+    c.opaquePct    = Math.max(0, Math.min(100, c.opaquePct));
+    c.clearPct     = Math.max(0, Math.min(100 - c.opaquePct, c.clearPct));
+    const maxFeather = Math.max(0, Math.min(100 - c.opaquePct - c.clearPct + c.featherPct, c.featherPct));
+    c.featherPct   = Math.max(0, Math.min(c.opaquePct, Math.min(c.clearPct, maxFeather)));
+  })(HINTCFG);
+
+  /* -------------------- Helpers -------------------- */
   const $  = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
   const shuffle = a => { for (let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]] } return a };
 
+  /* -------------------- Elements -------------------- */
   let sel, grid, btnCheck, btnHelp;
 
+  /* -------------------- State -------------------- */
   let manifest = [];
-  const cache = new Map();
+  const cache = new Map(); // date -> puzzle
   let currentDate = null;
   let currentPuzzle = null;
   let selected = [];
@@ -223,6 +259,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
   let layout = [];
   let stagedHelp = null; // { group, hinted:Set<string> }
 
+  /* -------------------- Fit text -------------------- */
   const BASE_SIZE = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tile-font')) || 14;
   const MIN_SIZE  = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tile-font-min')) || 10;
 
@@ -236,6 +273,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
   function fitAll(){ $$('.tile').forEach(fitText); }
   window.addEventListener('resize', () => { clearTimeout(window.__rf); window.__rf=setTimeout(fitAll, 80); });
 
+  /* -------------------- Data -------------------- */
   async function fetchJSON(cands){
     const list = Array.isArray(cands)?cands:[cands];
     for (const url of list){
@@ -251,7 +289,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
   const PREVIEW = new URLSearchParams(location.search).has('preview');
 
   async function loadEligibleDates(){
-    const all = await fetchJSON(['puzzles/manifest.json','/puzzles/manifest.json']);
+    const all = await fetchJSON(['puzzles/manifest.json','/puzzles/manifest.json']); // newest-first
     if (PREVIEW) return all;
     const cutoff = todayUK();
     const elig = all.filter(d => d <= cutoff);
@@ -263,6 +301,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
     cache.set(dateISO, data); return data;
   }
 
+  /* -------------------- UI helpers -------------------- */
   function setDates(dates){
     sel.innerHTML = dates.map(d => `<option value="${d}">${d}</option>`).join('');
   }
@@ -271,10 +310,24 @@ button:disabled{ opacity:.5; cursor:not-allowed }
     btnCheck.classList.toggle('ready', ready);
     btnCheck.setAttribute('aria-disabled', ready ? 'false' : 'true');
   }
-
   const getWord = el => el.dataset.word || el.querySelector('.label')?.textContent || '';
 
-  /* ---------- Hint overlay (Phase 2 grows CLOCKWISE) ---------- */
+  /* -------------------- Hinted overlay (single conic gradient) -------------------- */
+  function buildConicStopsVars(rootStyle){
+    // We animate around a boundary between opaque and clear. featherPct is centered on that boundary.
+    const A = HINTCFG.opaquePct;
+    const F = HINTCFG.featherPct;
+    // For convenient CSS var stops:
+    const stopA = Math.max(0, A - F/2); // end of solid opaque
+    const stopB = Math.min(100, A + F/2); // end of feather, start of clear
+    rootStyle.setProperty('--opaqueStopA', stopA + '%');
+    rootStyle.setProperty('--opaqueStopB', stopB + '%');
+    // Mid alpha at the center of the feather for a smoother look (you can tweak the .6 here if you want a different curve feel)
+    const midAlpha = Math.max(0, Math.min(1, HINTCFG.opacity * 0.6));
+    rootStyle.setProperty('--midAlpha', midAlpha.toString());
+    rootStyle.setProperty('--opa', HINTCFG.opacity.toString());
+  }
+
   function ensureHintOverlay(btn){
     if (!btn.isConnected || btn.offsetWidth === 0 || btn.offsetHeight === 0){
       requestAnimationFrame(() => ensureHintOverlay(btn));
@@ -286,78 +339,24 @@ button:disabled{ opacity:.5; cursor:not-allowed }
     wrap.className = 'hint-overlay';
     btn.appendChild(wrap);
 
-    const csRoot = getComputedStyle(document.documentElement);
-    const csBtn  = getComputedStyle(btn);
+    // Use ::before pseudo for the conic gradient; just set CSS vars here
+    const rs = wrap.style;
+    buildConicStopsVars(rs);
+    rs.setProperty('--angle', '0deg');
 
-    const ringPx = parseFloat(csRoot.getPropertyValue('--hint-ring')) || 1;
-    const tileRadius = parseFloat(csBtn.borderRadius) ||
-                       parseFloat(csRoot.getPropertyValue('--radius-tile')) || 0;
-    const cardColor = (csRoot.getPropertyValue('--card') || '#fff').trim();
-
-    const rect = wrap.getBoundingClientRect();
-    const W = Math.max(1, Math.round(rect.width));
-    const H = Math.max(1, Math.round(rect.height));
-
-    const rOuter = Math.max(0, tileRadius + ringPx);
-    const d = [
-      `M ${W/2},0`,
-      `H ${W - rOuter}`,
-      `A ${rOuter} ${rOuter} 0 0 1 ${W},${rOuter}`,
-      `V ${H - rOuter}`,
-      `A ${rOuter} ${rOuter} 0 0 1 ${W - rOuter},${H}`,
-      `H ${rOuter}`,
-      `A ${rOuter} ${rOuter} 0 0 1 0,${H - rOuter}`,
-      `V ${rOuter}`,
-      `A ${rOuter} ${rOuter} 0 0 1 ${rOuter},0`,
-      `H ${W/2}`,
-      `Z`
-    ].join(' ');
-
-    const svgNS = 'http://www.w3.org/2000/svg';
-    const svg = document.createElementNS(svgNS, 'svg');
-    svg.setAttribute('width','100%'); svg.setAttribute('height','100%');
-    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-    svg.setAttribute('preserveAspectRatio','none');
-
-    const path = document.createElementNS(svgNS, 'path');
-    path.setAttribute('d', d);
-    path.setAttribute('class', 'wipe');
-    path.style.stroke = cardColor;
-    path.style.strokeWidth = (ringPx * 2 + 1) + 'px';
-
-    svg.appendChild(path);
-    wrap.appendChild(svg);
-
-    const L = path.getTotalLength();
-    const setDash = (len, off=0) => {
-      const a = Math.max(0, Math.min(L, len));
-      path.style.strokeDasharray  = `${a} ${Math.max(0, L - a)}`;
-      path.style.strokeDashoffset = `${off}`;
+    // Rotate clockwise by updating --angle
+    const speed = HINTCFG.speedDegPerSec; // deg/sec
+    let rafId = 0, startTs = 0;
+    const loop = ts => {
+      if (!startTs) startTs = ts;
+      const elapsed = (ts - startTs) / 1000; // sec
+      const angle = (elapsed * speed) % 360;
+      rs.setProperty('--angle', angle + 'deg');
+      if (document.body.contains(wrap)) rafId = requestAnimationFrame(loop);
     };
+    rafId = requestAnimationFrame(loop);
 
-    /* Direction logic:
-       Phase 1 (0..0.5): shrink while moving COUNTER-CLOCKWISE -> a = L*(1-q), off = -L*q
-       Phase 2 (0.5..1): grow   while moving CLOCKWISE         -> a = L*q,     off = -L*q   (THIS LINE enforces CW)
-       Duration: 16s
-    */
-    const D = 16000;
-    let rafId = 0;
-    const loop = start => {
-      const frame = ts => {
-        const p = ((ts - start) % D) / D;
-        if (p < 0.5){
-          const q = p / 0.5;
-          setDash(L * (1 - q), -L * q);   // shrink CCW
-        } else {
-          const q = (p - 0.5) / 0.5;
-          setDash(L * q, -L * q);         // grow CW (note the minus)
-        }
-        rafId = requestAnimationFrame(frame);
-      };
-      rafId = requestAnimationFrame(frame);
-    };
-    requestAnimationFrame(loop);
-
+    // Cleanup if removed
     const mo = new MutationObserver(() => {
       if (!document.body.contains(btn)){
         cancelAnimationFrame(rafId);
@@ -383,7 +382,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
     }
   }
 
-  /* ---------- Render ---------- */
+  /* -------------------- Render -------------------- */
   function renderGrid(){
     grid.innerHTML = '';
 
@@ -417,7 +416,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
     fitAll();
   }
 
-  /* ---------- Game logic ---------- */
+  /* -------------------- Game logic -------------------- */
   const isSolvedWord = w => solvedGroups.some(g => g.words.includes(w));
   const buildInitialLayout = p => { layout = shuffle(p.categories.flatMap(c => c.words)); };
 
@@ -425,11 +424,13 @@ button:disabled{ opacity:.5; cursor:not-allowed }
     if (isSolvedWord(word)) return;
 
     if (el.classList.contains('sel')){
+      // Deselect
       el.classList.remove('sel');
       const i = selected.indexOf(word);
       if (i >= 0) selected.splice(i,1);
-      applyHintStateForWord(el, word);
+      applyHintStateForWord(el, word); // restore hint if applicable
     } else {
+      // If already 4 selected, clear them (restoring hints)
       if (selected.length === 4){
         $$('.tile.sel').forEach(n => {
           n.classList.remove('sel');
@@ -437,6 +438,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
         });
         selected = [];
       }
+      // Select this one, disable hint styling while selected
       el.classList.add('sel');
       selected.push(word);
       removeHintOverlay(el);
@@ -458,6 +460,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
       selected = [];
       renderGrid();
     } else {
+      // Wrong pick: clear selection & restore hint styles
       $$('.tile.sel').forEach(n => {
         n.classList.remove('sel');
         applyHintStateForWord(n, getWord(n));
@@ -485,10 +488,9 @@ button:disabled{ opacity:.5; cursor:not-allowed }
       return;
     }
 
-    // First press: stage a random unsolved group; hint two words (move to front)
+    // First press: stage random unsolved group; hint two words (move to front)
     const unsolved = currentPuzzle.categories.filter(c => !solvedGroups.some(g => g.title === c.title));
     if (!unsolved.length) return;
-
     const group = unsolved[Math.floor(Math.random()*unsolved.length)];
     const words = shuffle([...group.words]);
     const two = words.slice(0,2);
@@ -499,7 +501,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
     renderGrid();
   }
 
-  /* ---------- Apply date ---------- */
+  /* -------------------- Apply date -------------------- */
   async function applyDate(dateISO){
     currentDate   = dateISO;
     currentPuzzle = await getPuzzle(dateISO);
@@ -509,7 +511,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
     updateCheckUI();
   }
 
-  /* ---------- Boot ---------- */
+  /* -------------------- Boot -------------------- */
   async function boot(){
     try{
       manifest = await loadEligibleDates();
