@@ -227,7 +227,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
     speedDegPerSec: 22.5 // rotation speed (degrees per second), clockwise
   };
   // Tiny outer overdraw to kill DPR/AA slivers at outer corners
-  const MASK_BLEED_PX = 0.85; // ↑ increase to 1.0 if you ever see a seam on certain devices
+  const MASK_BLEED_PX = 1; // ↑ increase to 1.0 if you ever see a seam on certain devices
 
   (function clampHintCfg(c){
     c.opacity      = Math.max(0, Math.min(1, c.opacity));
@@ -574,3 +574,4 @@ button:disabled{ opacity:.5; cursor:not-allowed }
 </script>
 </body>
 </html>
+
