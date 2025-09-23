@@ -133,7 +133,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
 }
 @keyframes tileBorderFlow{ 0%{background-position:0 0, 0% 50%} 50%{background-position:0 0, 100% 50%} 100%{background-position:0 0, 0% 50%} }
 
-/* -------------------- Hinted overlay (perfectly fitted rounded-rect stroke) -------------------- */
+/* -------------------- Hinted overlay (rounded-rect stroke; only gradient rotates) -------------------- */
 .hint-overlay{
   position:absolute;
   inset:calc(-1 * var(--hint-ring));
@@ -145,10 +145,8 @@ button:disabled{ opacity:.5; cursor:not-allowed }
   position:absolute;
   inset:0;
   border-radius:inherit;
-  transform-origin:center;
-  transform: rotate(var(--angle, 0deg));
 
-  /* Conic gradient wedge: opaque → feather → clear (vars set from JS) */
+  /* The rotation happens by changing the conic 'from' angle via --angle; the element itself does not rotate */
   background:
     conic-gradient(
       from var(--angle, 0deg),
@@ -159,7 +157,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
       rgba(255,255,255,0) 100%
     );
 
-  /* Mask image (inline SVG) is a rounded-rect stroke matching the ring geometry */
+  /* Mask image (alpha) is a rounded-rect stroke that matches the ring geometry */
   mask-size:100% 100%; -webkit-mask-size:100% 100%;
   mask-repeat:no-repeat; -webkit-mask-repeat:no-repeat;
   mask-position:0 0; -webkit-mask-position:0 0;
@@ -222,19 +220,17 @@ button:disabled{ opacity:.5; cursor:not-allowed }
 (function(){
   /* -------------------- HINT OVERLAY CONFIG (tweak me) -------------------- */
   const HINTCFG = {
-    opacity: 0.5,       // 0..1  => strength of frosted wedge
-    opaquePct: 85,       // % of opaque section (before the transition)
-    clearPct: 15,        // % of fully clear section (after the transition) — informational
-    featherPct: 2,       // % width of fade (transition softness / "coefficient")
-    speedDegPerSec: 30 // rotation speed (degrees per second), clockwise
+    opacity: 0.55,       // 0..1  => frosted wedge alpha
+    opaquePct: 85,       // % opaque section
+    clearPct: 15,        // % clear section (info only; total is 100%)
+    featherPct: 8,       // % width of fade (transition softness)
+    speedDegPerSec: 22.5 // rotation speed (degrees per second), clockwise
   };
-  // Clamp to sensible ranges
   (function clampHintCfg(c){
     c.opacity      = Math.max(0, Math.min(1, c.opacity));
     c.opaquePct    = Math.max(0, Math.min(100, c.opaquePct));
     c.clearPct     = Math.max(0, Math.min(100, c.clearPct));
     const leftover = Math.max(0, 100 - c.opaquePct - c.clearPct);
-    // feather sits centered on the boundary; keep it within leftover+opaque/clear for safe fades
     c.featherPct   = Math.max(0, Math.min(100, c.featherPct, c.opaquePct, c.clearPct + leftover));
   })(HINTCFG);
 
@@ -309,7 +305,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
   }
   const getWord = el => el.dataset.word || el.querySelector('.label')?.textContent || '';
 
-  /* -------------------- Conic-gradient hint overlay (fits ring precisely) -------------------- */
+  /* -------------------- Conic-gradient hint overlay -------------------- */
   function buildConicStopsVars(style){
     const A = HINTCFG.opaquePct;   // opaque sector %
     const F = HINTCFG.featherPct;  // transition width %
@@ -349,19 +345,16 @@ button:disabled{ opacity:.5; cursor:not-allowed }
     const W = Math.max(1, Math.round(rect.width));
     const H = Math.max(1, Math.round(rect.height));
 
-    // Build inline SVG mask: rounded-rect stroke matching the ring thickness & radius
-    const strokeW = ringPx * 2;                     // cover full ring (inner+outer)
+    // SVG: rounded-rect STROKE (white on transparent) — used directly as a mask image
+    const strokeW = ringPx * 2;
     const rx = Math.max(0, tileRadius + ringPx);
     const ry = rx;
 
     const svg =
       `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
-         <mask id="m" maskUnits="userSpaceOnUse" maskContentUnits="userSpaceOnUse">
-           <rect x="${strokeW/2}" y="${strokeW/2}" width="${W - strokeW}" height="${H - strokeW}"
-                 rx="${rx}" ry="${ry}" fill="none"
-                 stroke="white" stroke-width="${strokeW}" stroke-linejoin="round" stroke-linecap="butt"/>
-         </mask>
-         <rect width="${W}" height="${H}" fill="white" mask="url(#m)"/>
+         <rect x="${strokeW/2}" y="${strokeW/2}" width="${W - strokeW}" height="${H - strokeW}"
+               rx="${rx}" ry="${ry}" fill="none"
+               stroke="white" stroke-width="${strokeW}" stroke-linejoin="round" stroke-linecap="butt"/>
        </svg>`;
 
     const dataUrl = `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}")`;
@@ -372,14 +365,13 @@ button:disabled{ opacity:.5; cursor:not-allowed }
     buildConicStopsVars(sweep.style);
     sweep.style.setProperty('--angle', '0deg');
 
-    // Rotate clockwise via CSS transform for perf
+    // Rotate CLOCKWISE by updating only the conic 'from' angle
     const speed = HINTCFG.speedDegPerSec;
     let rafId = 0, start = 0;
     const tick = ts => {
       if (!start) start = ts;
       const angle = ((ts - start) / 1000) * speed % 360;
-      sweep.style.setProperty('--angle', angle + 'deg');
-      sweep.style.transform = `rotate(${angle}deg)`;
+      sweep.style.setProperty('--angle', angle + 'deg'); // no element transform!
       if (document.body.contains(wrap)) rafId = requestAnimationFrame(tick);
     };
     rafId = requestAnimationFrame(tick);
