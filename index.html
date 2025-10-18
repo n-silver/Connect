@@ -31,9 +31,9 @@
   --ring-pink:   var(--pastel-pink-border);
 
   --sel-ring:3px;  /* selected tiles */
-  --hint-ring:2px; /* hinted tiles (static, no animation) */
+  --hint-ring:2px; /* hinted tiles (static ring) */
 
-  --btn-ready-fg:#fff;        /* Check text white when ready */
+  --btn-ready-fg:#fff;
   --logo-h: clamp(28px, 6vw, 40px);
 }
 
@@ -109,23 +109,24 @@ button:disabled{ opacity:.5; cursor:not-allowed }
 .tile:focus-visible{ outline:2px solid var(--focus); outline-offset:2px }
 .tile.solved{ opacity:.95 }
 
-/* Centering wrapper to keep scaled text perfectly centered */
+/* Absolute-centering wrapper to hold the label */
 .label-wrap{
+  position:relative;
   width:100%; height:100%;
-  display:flex; align-items:center; justify-content:center;
-  overflow:visible; /* scaled text can “hang” without affecting layout */
-  text-align:center;
 }
 
-/* label for measuring/scaling (only this node is transformed) */
+/* The label is absolutely centered & scaled around its center */
 .label{
+  position:absolute; left:50%; top:50%;
+  transform: translate(-50%, -50%); /* JS will append scale() */
   display:inline-block;
   max-width:100%;
   line-height:1.1;
   white-space:nowrap;
   pointer-events:none;
-  transform-origin:center center;
   will-change:transform;
+  transform-origin:center center;
+  text-align:center;
 }
 
 /* selected tiles (animated gradient border) */
@@ -248,11 +249,10 @@ button:disabled{ opacity:.5; cursor:not-allowed }
   const MIN_SIZE  = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tile-font-min')) || 10;
 
   function fitText(tile){
-    const wrap  = tile.querySelector('.label-wrap') || tile;
     const label = tile.querySelector('.label') || tile;
 
     // Reset before measuring
-    label.style.transform = 'none';
+    label.style.transform = 'translate(-50%, -50%) scale(1)';
     label.style.fontSize  = BASE_SIZE + 'px';
 
     // Available inner box (exclude tile paddings)
@@ -269,18 +269,17 @@ button:disabled{ opacity:.5; cursor:not-allowed }
     if (!fits()){
       for (let s = BASE_SIZE - 1; s >= MIN_SIZE; s--){
         label.style.fontSize = s + 'px';
-        if (fits()) return;
+        if (fits()) return; // already perfectly centered due to translate(-50%, -50%)
       }
     } else {
-      return; // already fits
+      return; // fits at base size; already centered
     }
 
-    // Step 2 — still too large: scale the label itself.
-    // Because label is centered inside .label-wrap (flex), the visual result stays perfectly centered.
+    // Step 2 — still too large: scale the label itself, around its visual center
     const scaleX = availW / label.scrollWidth;
     const scaleY = availH / label.scrollHeight;
     const scale  = Math.max(0.5, Math.min(1, Math.min(scaleX, scaleY)));
-    label.style.transform = `translateZ(0) scale(${scale})`;
+    label.style.transform = `translate(-50%, -50%) translateZ(0) scale(${scale})`;
   }
 
   function fitAll(){ $$('.tile').forEach(fitText); }
@@ -345,14 +344,12 @@ button:disabled{ opacity:.5; cursor:not-allowed }
       btn.className = 'tile';
       btn.dataset.word = word;
 
-      // Centering wrapper + label (we transform only the inner .label)
+      // Centering wrapper + absolutely centered label
       const lw = document.createElement('span');
       lw.className = 'label-wrap';
-
       const label = document.createElement('span');
       label.className = 'label';
       label.textContent = word;
-
       lw.appendChild(label);
       btn.appendChild(lw);
 
@@ -394,7 +391,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
       selected.push(word);
     }
 
-    fitText(el);       // ensure this tile is re-fit after any border/style change
+    fitText(el);       // re-fit after any class/style change
     updateCheckUI();
   }
 
@@ -411,7 +408,6 @@ button:disabled{ opacity:.5; cursor:not-allowed }
       selected = [];
       renderGrid();
     } else {
-      // Wrong pick: clear selection & restore static hint rings where applicable
       $$('.tile.sel').forEach(n => {
         const w = getWord(n);
         n.classList.remove('sel');
