@@ -10,7 +10,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet" />
 
 <style>
-/* -------------------- Design tokens -------------------- */
 :root{
   --bg:#fafafa; --fg:#111; --muted:#6b7280; --card:#fff; --border:#e5e7eb; --focus:#0b57d0;
   --tile-font:14px; --tile-font-min:10px; --tile-h:70px;
@@ -34,11 +33,11 @@
   --sel-ring:3px;  /* selected tiles */
   --hint-ring:2px; /* hinted tiles (static, no animation) */
 
-  --btn-ready-fg:#fff;
+  --btn-ready-fg:#fff;        /* Check text white when ready */
   --logo-h: clamp(28px, 6vw, 40px);
 }
 
-/* -------------------- Base -------------------- */
+/* Base */
 html,body{height:100%}
 *,*::before,*::after{box-sizing:border-box; -webkit-text-fill-color:currentColor}
 body{
@@ -48,7 +47,7 @@ body{
 }
 .wrap{max-width:1200px; margin:0 auto; padding:16px}
 
-/* -------------------- Top bar -------------------- */
+/* Top bar */
 .topbar{
   display:flex; align-items:center; justify-content:space-between; gap:12px;
   padding-bottom:8px; margin-bottom:16px; position:relative;
@@ -65,7 +64,7 @@ body{
   border-radius:var(--radius-input); padding:8px 10px; font-size:14px; cursor:pointer; appearance:none;
 }
 
-/* -------------------- Actions -------------------- */
+/* Actions */
 .actions{ display:flex; justify-content:center; align-items:center; gap:8px; margin-top:12px }
 button{
   border:1px solid var(--border); background:var(--card); color:var(--fg);
@@ -86,28 +85,41 @@ button:disabled{ opacity:.5; cursor:not-allowed }
 }
 @keyframes btnFlow{ 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
 
-/* -------------------- Grid & tiles -------------------- */
+/* Grid & tiles */
 .grid{
   display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px;
   max-width:1200px; margin:0 auto;
 }
 .tile{
   position:relative;
-  height:var(--tile-h); border:1px solid var(--border); border-radius:var(--radius-tile); background:var(--card);
-  font-weight:700; font-size:var(--tile-font); letter-spacing:.2px; padding:0 10px;
-  display:flex; align-items:center; justify-content:center; white-space:nowrap; overflow:hidden;
-  box-shadow:0 1px 2px rgba(0,0,0,.05); transition:background .15s ease,border-color .15s ease,transform .15s ease;
+  height:var(--tile-h);
+  border:1px solid var(--border);
+  border-radius:var(--radius-tile);
+  background:var(--card);
+  font-weight:700;
+  font-size:var(--tile-font);
+  letter-spacing:.2px;
+  padding:0 10px;
+  display:flex; align-items:center; justify-content:center;
+  white-space:nowrap; overflow:hidden;
+  box-shadow:0 1px 2px rgba(0,0,0,.05);
+  transition:background .15s ease,border-color .15s ease,transform .15s ease;
   color:var(--fg); user-select:none;
 }
 .tile:focus-visible{ outline:2px solid var(--focus); outline-offset:2px }
 .tile.solved{ opacity:.95 }
 
-/* Word label (for text fitting) */
+/* label for measuring/scaling */
 .tile .label{
-  display:inline-block; max-width:100%; line-height:1.1; pointer-events:none;
+  display:block;
+  max-width:100%;
+  line-height:1.1;
+  pointer-events:none;
+  transform-origin:center;
+  will-change:transform;
 }
 
-/* Selected tiles — keep animated gradient border */
+/* selected tiles (animated gradient border) */
 .tile.sel{
   border: var(--sel-ring) solid transparent;
   border-radius: var(--radius-tile);
@@ -123,9 +135,13 @@ button:disabled{ opacity:.5; cursor:not-allowed }
   background-position:0 0, 0% 50%;
   animation:tileBorderFlow 16s ease-in-out infinite;
 }
-@keyframes tileBorderFlow{ 0%{background-position:0 0, 0% 50%} 50%{background-position:0 0, 100% 50%} 100%{background-position:0 0, 0% 50%} }
+@keyframes tileBorderFlow{
+  0%{background-position:0 0, 0% 50%}
+  50%{background-position:0 0, 100% 50%}
+  100%{background-position:0 0, 0% 50%}
+}
 
-/* Hinted tiles — static (no animation), simple 2px gradient ring */
+/* hinted tiles (static gradient border) */
 .tile.hint{
   border: var(--hint-ring) solid transparent;
   border-radius: var(--radius-tile);
@@ -138,13 +154,18 @@ button:disabled{ opacity:.5; cursor:not-allowed }
       var(--ring-pink)   75%,
       var(--ring-yellow) 100%) border-box;
   background-size:100% 100%, 320% 320%;
-  background-position:0 0, 50% 50%; /* static center — no animation */
+  background-position:0 0, 50% 50%;
 }
 
-/* -------------------- Solved groups -------------------- */
+/* Solved groups */
 .solved-group{
-  grid-column:1 / -1; padding:12px; border-radius:var(--radius-solved);
-  text-align:center; display:flex; flex-direction:column; gap:4px;
+  grid-column:1 / -1;
+  padding:12px;
+  border-radius:var(--radius-solved);
+  text-align:center;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
 }
 .solved-title{ font-weight:700; font-size:14px; letter-spacing:.2px; margin:0 }
 .solved-words-line{ font-weight:500; font-size:14px; opacity:.95 }
@@ -158,7 +179,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
 /* A11y */
 .sr-only{ position:absolute!important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0 }
 
-/* Motion prefs (only affects selected button and selected tile ring) */
+/* Motion prefs */
 @media (prefers-reduced-motion:reduce){
   .check-btn.ready{ animation:none }
   .tile.sel{ animation:none }
@@ -195,15 +216,15 @@ button:disabled{ opacity:.5; cursor:not-allowed }
 
 <script>
 (function(){
-  /* -------------------- Helpers -------------------- */
+  /* Helpers */
   const $  = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
   const shuffle = a => { for (let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]] } return a };
 
-  /* -------------------- Elements -------------------- */
+  /* Elements */
   let sel, grid, btnCheck, btnHelp;
 
-  /* -------------------- State -------------------- */
+  /* State */
   let manifest = [];
   const cache = new Map(); // date -> puzzle
   let currentDate = null;
@@ -213,21 +234,41 @@ button:disabled{ opacity:.5; cursor:not-allowed }
   let layout = [];
   let stagedHelp = null; // { group, hinted:Set<string> }
 
-  /* -------------------- Fit text -------------------- */
+  /* Fit text (shrink, then scale) */
   const BASE_SIZE = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tile-font')) || 14;
   const MIN_SIZE  = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tile-font-min')) || 10;
 
   function fitText(tile){
     const label = tile.querySelector('.label') || tile;
-    label.style.fontSize = BASE_SIZE + 'px';
-    const fits = () => (label.scrollWidth <= tile.clientWidth) && (label.scrollHeight <= tile.clientHeight);
-    if (fits()) return;
-    for (let s=BASE_SIZE-1; s>=MIN_SIZE; s--){ label.style.fontSize = s + 'px'; if (fits()) break; }
+    label.style.transform = 'none';
+    label.style.fontSize  = BASE_SIZE + 'px';
+
+    const cs = getComputedStyle(tile);
+    const padX = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+    const padY = (parseFloat(cs.paddingTop)  || 0) + (parseFloat(cs.paddingBottom) || 0);
+    const availW = Math.max(1, tile.clientWidth  - padX);
+    const availH = Math.max(1, tile.clientHeight - padY);
+    const fits = () => label.scrollWidth <= availW && label.scrollHeight <= availH;
+
+    if (!fits()){
+      for (let s = BASE_SIZE - 1; s >= MIN_SIZE; s--){
+        label.style.fontSize = s + 'px';
+        if (fits()) return;
+      }
+    } else {
+      return;
+    }
+
+    const scaleX = availW / label.scrollWidth;
+    const scaleY = availH / label.scrollHeight;
+    const scale  = Math.max(0.5, Math.min(1, Math.min(scaleX, scaleY)));
+    label.style.transform = `scale(${scale})`;
   }
+
   function fitAll(){ $$('.tile').forEach(fitText); }
   window.addEventListener('resize', () => { clearTimeout(window.__rf); window.__rf=setTimeout(fitAll, 80); });
 
-  /* -------------------- Data -------------------- */
+  /* Data */
   async function fetchJSON(cands){
     const list = Array.isArray(cands)?cands:[cands];
     for (const url of list){
@@ -255,7 +296,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
     cache.set(dateISO, data); return data;
   }
 
-  /* -------------------- UI helpers -------------------- */
+  /* UI helpers */
   function setDates(dates){
     sel.innerHTML = dates.map(d => `<option value="${d}">${d}</option>`).join('');
   }
@@ -266,7 +307,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
   }
   const getWord = el => el.dataset.word || el.querySelector('.label')?.textContent || '';
 
-  /* -------------------- Render -------------------- */
+  /* Render */
   function renderGrid(){
     grid.innerHTML = '';
 
@@ -289,21 +330,20 @@ button:disabled{ opacity:.5; cursor:not-allowed }
       const label = document.createElement('span');
       label.className = 'label';
       label.textContent = word;
-
       btn.appendChild(label);
+
       btn.addEventListener('click', () => toggleWord(btn, word));
       grid.appendChild(btn);
 
-      // Apply static hint ring (no animation)
       if (stagedHelp && stagedHelp.hinted && stagedHelp.hinted.has(word)){
-        btn.classList.add('hint');
+        btn.classList.add('hint'); // static 2px gradient ring
       }
     }
 
     fitAll();
   }
 
-  /* -------------------- Game logic -------------------- */
+  /* Game logic */
   const isSolvedWord = w => solvedGroups.some(g => g.words.includes(w));
   const buildInitialLayout = p => { layout = shuffle(p.categories.flatMap(c => c.words)); };
 
@@ -315,8 +355,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
       el.classList.remove('sel');
       const i = selected.indexOf(word);
       if (i >= 0) selected.splice(i,1);
-
-      // If this word is hinted, restore static hint border
+      // Restore hint ring if applicable
       if (stagedHelp && stagedHelp.hinted && stagedHelp.hinted.has(word)) el.classList.add('hint');
     } else {
       // If already 4 selected, clear them and restore hint rings where applicable
@@ -325,15 +364,17 @@ button:disabled{ opacity:.5; cursor:not-allowed }
           const w = getWord(n);
           n.classList.remove('sel');
           if (stagedHelp && stagedHelp.hinted && stagedHelp.hinted.has(w)) n.classList.add('hint');
+          fitText(n);
         });
         selected = [];
       }
       // Select this one
       el.classList.add('sel');
-      el.classList.remove('hint'); // hinted style off while selected
+      el.classList.remove('hint');
       selected.push(word);
     }
 
+    fitText(el);
     updateCheckUI();
   }
 
@@ -392,7 +433,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
     renderGrid();
   }
 
-  /* -------------------- Apply date -------------------- */
+  /* Apply date */
   async function applyDate(dateISO){
     currentDate   = dateISO;
     currentPuzzle = await getPuzzle(dateISO);
@@ -402,7 +443,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
     updateCheckUI();
   }
 
-  /* -------------------- Boot -------------------- */
+  /* Boot */
   async function boot(){
     try{
       manifest = await loadEligibleDates();
