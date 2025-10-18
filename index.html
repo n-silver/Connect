@@ -32,7 +32,7 @@
   --ring-pink:   var(--pastel-pink-border);
 
   --sel-ring:3px;  /* selected tiles */
-  --hint-ring:2px; /* hinted tiles */
+  --hint-ring:2px; /* hinted tiles (static, no animation) */
 
   --btn-ready-fg:#fff;
   --logo-h: clamp(28px, 6vw, 40px);
@@ -102,18 +102,14 @@ button:disabled{ opacity:.5; cursor:not-allowed }
 .tile:focus-visible{ outline:2px solid var(--focus); outline-offset:2px }
 .tile.solved{ opacity:.95 }
 
-/* Only the word should be measured/resized */
+/* Word label (for text fitting) */
 .tile .label{
-  display:inline-block;
-  max-width:100%;
-  line-height:1.1;
-  pointer-events:none;
+  display:inline-block; max-width:100%; line-height:1.1; pointer-events:none;
 }
 
-/* Animated gradient borders (selected + hinted) */
-.tile.sel,
-.tile.hint{
-  border: var(--sel-ring) solid transparent; /* default selected thickness */
+/* Selected tiles — keep animated gradient border */
+.tile.sel{
+  border: var(--sel-ring) solid transparent;
   border-radius: var(--radius-tile);
   background:
     linear-gradient(var(--card), var(--card)) padding-box,
@@ -127,41 +123,22 @@ button:disabled{ opacity:.5; cursor:not-allowed }
   background-position:0 0, 0% 50%;
   animation:tileBorderFlow 16s ease-in-out infinite;
 }
-.tile.hint{
-  border-width:var(--hint-ring);   /* 2px hinted ring */
-  overflow:visible;                /* allow overlay to sit on ring */
-}
 @keyframes tileBorderFlow{ 0%{background-position:0 0, 0% 50%} 50%{background-position:0 0, 100% 50%} 100%{background-position:0 0, 0% 50%} }
 
-/* -------------------- Hinted overlay (donut mask with tiny outer bleed) -------------------- */
-.hint-overlay{
-  position:absolute;
-  inset:calc(-1 * var(--hint-ring));
-  border-radius:calc(var(--radius-tile) + var(--hint-ring));
-  pointer-events:none;
-  z-index:4;
-}
-.hint-overlay .sweep{
-  position:absolute;
-  inset:0;
-  border-radius:inherit;
-
-  /* Rotate by changing the conic 'from' angle; the element stays static */
+/* Hinted tiles — static (no animation), simple 2px gradient ring */
+.tile.hint{
+  border: var(--hint-ring) solid transparent;
+  border-radius: var(--radius-tile);
   background:
-    conic-gradient(
-      from var(--angle, 0deg),
-      rgba(255,255,255,var(--opa, .55)) 0%,
-      rgba(255,255,255,var(--opa, .55)) var(--opaqueStopA, 82%),
-      rgba(255,255,255,var(--midAlpha, .33)) var(--opaqueStopB, 85%),
-      rgba(255,255,255,0) var(--opaqueStopB, 85%),
-      rgba(255,255,255,0) 100%
-    );
-
-  /* Mask image (luminance) is supplied from JS; it's a rounded-rect donut with outer bleed */
-  mask-size:100% 100%; -webkit-mask-size:100% 100%;
-  mask-repeat:no-repeat; -webkit-mask-repeat:no-repeat;
-  mask-position:0 0; -webkit-mask-position:0 0;
-  mask-mode:luminance;
+    linear-gradient(var(--card), var(--card)) padding-box,
+    linear-gradient(120deg,
+      var(--ring-yellow) 0%,
+      var(--ring-green)  25%,
+      var(--ring-blue)   50%,
+      var(--ring-pink)   75%,
+      var(--ring-yellow) 100%) border-box;
+  background-size:100% 100%, 320% 320%;
+  background-position:0 0, 50% 50%; /* static center — no animation */
 }
 
 /* -------------------- Solved groups -------------------- */
@@ -181,10 +158,10 @@ button:disabled{ opacity:.5; cursor:not-allowed }
 /* A11y */
 .sr-only{ position:absolute!important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0 }
 
-/* Motion prefs */
+/* Motion prefs (only affects selected button and selected tile ring) */
 @media (prefers-reduced-motion:reduce){
   .check-btn.ready{ animation:none }
-  .tile.sel,.tile.hint{ animation:none }
+  .tile.sel{ animation:none }
 }
 
 /* Small screens */
@@ -218,25 +195,6 @@ button:disabled{ opacity:.5; cursor:not-allowed }
 
 <script>
 (function(){
-  /* -------------------- HINT OVERLAY CONFIG (tweak me) -------------------- */
-  const HINTCFG = {
-    opacity: 0.55,       // 0..1  => frosted wedge alpha
-    opaquePct: 85,       // % opaque section
-    clearPct: 15,        // % clear section (info only; total is 100%)
-    featherPct: 8,       // % width of fade (transition softness)
-    speedDegPerSec: 22.5 // rotation speed (degrees per second), clockwise
-  };
-  // Tiny outer overdraw to kill DPR/AA slivers at outer corners
-  const MASK_BLEED_PX = 3; // ↑ increase to 1.0 if you ever see a seam on certain devices
-
-  (function clampHintCfg(c){
-    c.opacity      = Math.max(0, Math.min(1, c.opacity));
-    c.opaquePct    = Math.max(0, Math.min(100, c.opaquePct));
-    c.clearPct     = Math.max(0, Math.min(100, c.clearPct));
-    const leftover = Math.max(0, 100 - c.opaquePct - c.clearPct);
-    c.featherPct   = Math.max(0, Math.min(100, c.featherPct, c.opaquePct, c.clearPct + leftover));
-  })(HINTCFG);
-
   /* -------------------- Helpers -------------------- */
   const $  = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
@@ -308,118 +266,6 @@ button:disabled{ opacity:.5; cursor:not-allowed }
   }
   const getWord = el => el.dataset.word || el.querySelector('.label')?.textContent || '';
 
-  /* -------------------- Conic-gradient hint overlay (donut mask with outer bleed) -------------------- */
-  function buildConicStopsVars(style){
-    const A = HINTCFG.opaquePct;   // opaque sector %
-    const F = HINTCFG.featherPct;  // transition width %
-    const stopA = Math.max(0, A - F/2);      // end of solid opaque
-    const stopB = Math.min(100, A + F/2);    // end of feather/start of clear
-    const midAlpha = Math.max(0, Math.min(1, HINTCFG.opacity * 0.6)); // softer mid
-    style.setProperty('--opaqueStopA', stopA + '%');
-    style.setProperty('--opaqueStopB', stopB + '%');
-    style.setProperty('--midAlpha', midAlpha.toString());
-    style.setProperty('--opa', HINTCFG.opacity.toString());
-  }
-
-  function ensureHintOverlay(btn){
-    if (!btn.isConnected || btn.offsetWidth === 0 || btn.offsetHeight === 0){
-      requestAnimationFrame(() => ensureHintOverlay(btn));
-      return;
-    }
-    if (btn.querySelector('.hint-overlay')) return;
-
-    const wrap = document.createElement('div');
-    wrap.className = 'hint-overlay';
-    btn.appendChild(wrap);
-
-    const sweep = document.createElement('div');
-    sweep.className = 'sweep';
-    wrap.appendChild(sweep);
-
-    // Read tokens
-    const csRoot = getComputedStyle(document.documentElement);
-    const csBtn  = getComputedStyle(btn);
-    const ringPx     = parseFloat(csRoot.getPropertyValue('--hint-ring')) || 2;
-    const tileRadius = parseFloat(csBtn.borderRadius) ||
-                       parseFloat(csRoot.getPropertyValue('--radius-tile')) || 0;
-
-    // Measure overlay box
-    const rect = wrap.getBoundingClientRect();
-    const W = Math.max(1, Math.round(rect.width));
-    const H = Math.max(1, Math.round(rect.height));
-
-    /* Donut mask with outer bleed:
-       - Outer rounded-rect: expands by MASK_BLEED_PX in each direction; radius += MASK_BLEED_PX
-       - Inner rounded-rect: exact inner edge (no bleed) to avoid showing overlay inside tile face
-    */
-    const outerBleed = MASK_BLEED_PX;
-    const R_outer = tileRadius + ringPx + outerBleed;
-    const inset   = ringPx * 2;           // inner edge inset (no bleed)
-    const R_inner = Math.max(0, tileRadius);
-
-    const outerX = -outerBleed;
-    const outerY = -outerBleed;
-    const outerW = W + outerBleed * 2;
-    const outerH = H + outerBleed * 2;
-
-    const innerX = inset;
-    const innerY = inset;
-    const innerW = Math.max(0, W - 2*inset);
-    const innerH = Math.max(0, H - 2*inset);
-
-    const svg =
-      `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" shape-rendering="geometricPrecision">
-         <!-- White outer RR slightly oversized -->
-         <rect x="${outerX}" y="${outerY}" width="${outerW}" height="${outerH}" rx="${R_outer}" ry="${R_outer}" fill="white"/>
-         <!-- Black inner RR exactly at tile inner edge -->
-         <rect x="${innerX}" y="${innerY}" width="${innerW}" height="${innerH}" rx="${R_inner}" ry="${R_inner}" fill="black"/>
-       </svg>`;
-
-    const dataUrl = `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}")`;
-    sweep.style.webkitMaskImage = dataUrl;
-    sweep.style.maskImage = dataUrl;
-
-    // Set gradient stop variables and start angle
-    buildConicStopsVars(sweep.style);
-    sweep.style.setProperty('--angle', '0deg');
-
-    // Rotate CLOCKWISE by updating only the conic 'from' angle
-    const speed = HINTCFG.speedDegPerSec;
-    let rafId = 0, start = 0;
-    const tick = ts => {
-      if (!start) start = ts;
-      const angle = ((ts - start) / 1000) * speed % 360;
-      sweep.style.setProperty('--angle', angle + 'deg');
-      if (document.body.contains(wrap)) rafId = requestAnimationFrame(tick);
-    };
-    rafId = requestAnimationFrame(tick);
-
-    // Cleanup if removed
-    const mo = new MutationObserver(() => {
-      if (!document.body.contains(btn)){
-        cancelAnimationFrame(rafId);
-        mo.disconnect();
-      }
-    });
-    mo.observe(document.body, { childList:true, subtree:true });
-  }
-
-  function removeHintOverlay(btn){
-    btn.classList.remove('hint');
-    const overlay = btn.querySelector('.hint-overlay');
-    if (overlay) overlay.remove();
-  }
-
-  function applyHintStateForWord(btn, word){
-    const shouldHint = stagedHelp && stagedHelp.hinted && stagedHelp.hinted.has(word) && !btn.classList.contains('sel');
-    if (shouldHint){
-      btn.classList.add('hint');
-      ensureHintOverlay(btn);
-    } else {
-      removeHintOverlay(btn);
-    }
-  }
-
   /* -------------------- Render -------------------- */
   function renderGrid(){
     grid.innerHTML = '';
@@ -448,7 +294,10 @@ button:disabled{ opacity:.5; cursor:not-allowed }
       btn.addEventListener('click', () => toggleWord(btn, word));
       grid.appendChild(btn);
 
-      applyHintStateForWord(btn, word);
+      // Apply static hint ring (no animation)
+      if (stagedHelp && stagedHelp.hinted && stagedHelp.hinted.has(word)){
+        btn.classList.add('hint');
+      }
     }
 
     fitAll();
@@ -462,21 +311,27 @@ button:disabled{ opacity:.5; cursor:not-allowed }
     if (isSolvedWord(word)) return;
 
     if (el.classList.contains('sel')){
+      // Deselect
       el.classList.remove('sel');
       const i = selected.indexOf(word);
       if (i >= 0) selected.splice(i,1);
-      applyHintStateForWord(el, word); // restore hint if applicable
+
+      // If this word is hinted, restore static hint border
+      if (stagedHelp && stagedHelp.hinted && stagedHelp.hinted.has(word)) el.classList.add('hint');
     } else {
+      // If already 4 selected, clear them and restore hint rings where applicable
       if (selected.length === 4){
         $$('.tile.sel').forEach(n => {
+          const w = getWord(n);
           n.classList.remove('sel');
-          applyHintStateForWord(n, getWord(n));
+          if (stagedHelp && stagedHelp.hinted && stagedHelp.hinted.has(w)) n.classList.add('hint');
         });
         selected = [];
       }
+      // Select this one
       el.classList.add('sel');
+      el.classList.remove('hint'); // hinted style off while selected
       selected.push(word);
-      removeHintOverlay(el); // hint off while selected
     }
 
     updateCheckUI();
@@ -495,19 +350,21 @@ button:disabled{ opacity:.5; cursor:not-allowed }
       selected = [];
       renderGrid();
     } else {
+      // Wrong pick: clear selection & restore static hint rings where applicable
       $$('.tile.sel').forEach(n => {
+        const w = getWord(n);
         n.classList.remove('sel');
-        applyHintStateForWord(n, getWord(n));
+        if (stagedHelp && stagedHelp.hinted && stagedHelp.hinted.has(w)) n.classList.add('hint');
       });
       selected = [];
+      updateCheckUI();
     }
-    updateCheckUI();
   }
 
   function handleHelp(){
     if (!currentPuzzle) return;
 
-    // Second press: finish staged group
+    // Second press: finish staged group immediately
     if (stagedHelp && stagedHelp.group){
       const g = stagedHelp.group;
       if (!solvedGroups.some(x=>x.title===g.title)){
@@ -522,7 +379,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
       return;
     }
 
-    // First press: stage random unsolved group, hint two words (brought to front)
+    // First press: stage random unsolved group, bring 2 words to the front (static hint ring)
     const unsolved = currentPuzzle.categories.filter(c => !solvedGroups.some(g => g.title === c.title));
     if (!unsolved.length) return;
     const group = unsolved[Math.floor(Math.random()*unsolved.length)];
@@ -574,6 +431,3 @@ button:disabled{ opacity:.5; cursor:not-allowed }
 </script>
 </body>
 </html>
-
-
-
