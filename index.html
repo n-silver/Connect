@@ -109,13 +109,22 @@ button:disabled{ opacity:.5; cursor:not-allowed }
 .tile:focus-visible{ outline:2px solid var(--focus); outline-offset:2px }
 .tile.solved{ opacity:.95 }
 
-/* label for measuring/scaling */
-.tile .label{
-  display:block;
+/* Centering wrapper to keep scaled text perfectly centered */
+.label-wrap{
+  width:100%; height:100%;
+  display:flex; align-items:center; justify-content:center;
+  overflow:visible; /* scaled text can “hang” without affecting layout */
+  text-align:center;
+}
+
+/* label for measuring/scaling (only this node is transformed) */
+.label{
+  display:inline-block;
   max-width:100%;
   line-height:1.1;
+  white-space:nowrap;
   pointer-events:none;
-  transform-origin:center;
+  transform-origin:center center;
   will-change:transform;
 }
 
@@ -239,30 +248,39 @@ button:disabled{ opacity:.5; cursor:not-allowed }
   const MIN_SIZE  = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tile-font-min')) || 10;
 
   function fitText(tile){
+    const wrap  = tile.querySelector('.label-wrap') || tile;
     const label = tile.querySelector('.label') || tile;
+
+    // Reset before measuring
     label.style.transform = 'none';
     label.style.fontSize  = BASE_SIZE + 'px';
 
+    // Available inner box (exclude tile paddings)
     const cs = getComputedStyle(tile);
     const padX = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
     const padY = (parseFloat(cs.paddingTop)  || 0) + (parseFloat(cs.paddingBottom) || 0);
     const availW = Math.max(1, tile.clientWidth  - padX);
     const availH = Math.max(1, tile.clientHeight - padY);
-    const fits = () => label.scrollWidth <= availW && label.scrollHeight <= availH;
 
+    // Helper: does it fit within available box?
+    const fits = () => (label.scrollWidth <= availW && label.scrollHeight <= availH);
+
+    // Step 1 — shrink font-size down to MIN_SIZE
     if (!fits()){
       for (let s = BASE_SIZE - 1; s >= MIN_SIZE; s--){
         label.style.fontSize = s + 'px';
         if (fits()) return;
       }
     } else {
-      return;
+      return; // already fits
     }
 
+    // Step 2 — still too large: scale the label itself.
+    // Because label is centered inside .label-wrap (flex), the visual result stays perfectly centered.
     const scaleX = availW / label.scrollWidth;
     const scaleY = availH / label.scrollHeight;
     const scale  = Math.max(0.5, Math.min(1, Math.min(scaleX, scaleY)));
-    label.style.transform = `scale(${scale})`;
+    label.style.transform = `translateZ(0) scale(${scale})`;
   }
 
   function fitAll(){ $$('.tile').forEach(fitText); }
@@ -327,10 +345,16 @@ button:disabled{ opacity:.5; cursor:not-allowed }
       btn.className = 'tile';
       btn.dataset.word = word;
 
+      // Centering wrapper + label (we transform only the inner .label)
+      const lw = document.createElement('span');
+      lw.className = 'label-wrap';
+
       const label = document.createElement('span');
       label.className = 'label';
       label.textContent = word;
-      btn.appendChild(label);
+
+      lw.appendChild(label);
+      btn.appendChild(lw);
 
       btn.addEventListener('click', () => toggleWord(btn, word));
       grid.appendChild(btn);
@@ -351,14 +375,11 @@ button:disabled{ opacity:.5; cursor:not-allowed }
     if (isSolvedWord(word)) return;
 
     if (el.classList.contains('sel')){
-      // Deselect
       el.classList.remove('sel');
       const i = selected.indexOf(word);
       if (i >= 0) selected.splice(i,1);
-      // Restore hint ring if applicable
       if (stagedHelp && stagedHelp.hinted && stagedHelp.hinted.has(word)) el.classList.add('hint');
     } else {
-      // If already 4 selected, clear them and restore hint rings where applicable
       if (selected.length === 4){
         $$('.tile.sel').forEach(n => {
           const w = getWord(n);
@@ -368,13 +389,12 @@ button:disabled{ opacity:.5; cursor:not-allowed }
         });
         selected = [];
       }
-      // Select this one
       el.classList.add('sel');
       el.classList.remove('hint');
       selected.push(word);
     }
 
-    fitText(el);
+    fitText(el);       // ensure this tile is re-fit after any border/style change
     updateCheckUI();
   }
 
@@ -396,6 +416,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
         const w = getWord(n);
         n.classList.remove('sel');
         if (stagedHelp && stagedHelp.hinted && stagedHelp.hinted.has(w)) n.classList.add('hint');
+        fitText(n);
       });
       selected = [];
       updateCheckUI();
@@ -446,8 +467,9 @@ button:disabled{ opacity:.5; cursor:not-allowed }
   /* Boot */
   async function boot(){
     try{
-      manifest = await loadEligibleDates();
-      if (!manifest.length) throw new Error('No dates in manifest');
+      const allDates = await loadEligibleDates();
+      if (!allDates.length) throw new Error('No dates in manifest');
+      manifest = allDates;
       setDates(manifest);
       const def = manifest[0];
       sel.value = def;
