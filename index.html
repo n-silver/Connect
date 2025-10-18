@@ -13,7 +13,10 @@
 <style>
 :root{
   --bg:#fafafa; --fg:#111; --muted:#6b7280; --card:#fff; --border:#e5e7eb; --focus:#0b57d0;
-  --tile-font:14px; --tile-h:70px;
+
+  /* Base label size; we will scale from here (no lower limit). */
+  --tile-font:14px;
+  --tile-h:70px;
 
   --radius:6px;
   --radius-btn:var(--radius);
@@ -102,15 +105,15 @@ button:disabled{ opacity:.5; cursor:not-allowed }
   letter-spacing:.2px;
   padding:0 10px;
   display:block;
-  overflow:hidden; /* keep content clipped to rounded corners */
+  overflow:hidden; /* clip to rounded corners */
   box-shadow:0 1px 2px rgba(0,0,0,.05);
   color:var(--fg); user-select:none;
 }
 
-/* Label centering: absolute center, we only transform/scale the inner .label-measure */
-.label-wrap{
-  position:relative; width:100%; height:100%;
-}
+/* Absolute-centering container for the label */
+.label-wrap{ position:relative; width:100%; height:100% }
+
+/* The label is absolutely centered; JS appends scale(...) */
 .label{
   position:absolute; left:50%; top:50%;
   transform: translate(-50%, -50%); /* JS appends scale(...) */
@@ -120,7 +123,8 @@ button:disabled{ opacity:.5; cursor:not-allowed }
   pointer-events:none;
   transform-origin:center center;
   text-align:center;
-  letter-spacing:0;  /* avoid unexpected width growth */
+  letter-spacing:0;
+  font-kerning:normal;
 }
 
 /* Selected tiles (animated gradient border) */
@@ -173,12 +177,6 @@ button:disabled{ opacity:.5; cursor:not-allowed }
 }
 .solved-title{ font-weight:700; font-size:14px; letter-spacing:.2px; margin:0 }
 .solved-words-line{ font-weight:500; font-size:14px; opacity:.95 }
-
-/* Pastel fills */
-.tile.solved.solved-group.p-blue   { background:var(--pastel-blue-bg)!important;   border-color:var(--pastel-blue-border)!important;   color:var(--pastel-blue-fg)!important }
-.tile.solved.solved-group.p-yellow { background:var(--pastel-yellow-bg)!important; border-color:var(--pastel-yellow-border)!important; color:var(--pastel-yellow-fg)!important }
-.tile.solved.solved-group.p-pink   { background:var(--pastel-pink-bg)!important;   border-color:var(--pastel-pink-border)!important;   color:var(--pastel-pink-fg)!important }
-.tile.solved.solved-group.p-green  { background:var(--pastel-green-bg)!important;  border-color:var(--pastel-green-border)!important;  color:var(--pastel-green-fg)!important }
 
 /* A11y */
 .sr-only{ position:absolute!important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0 }
@@ -238,38 +236,15 @@ button:disabled{ opacity:.5; cursor:not-allowed }
   let layout = [];
   let stagedHelp = null; // { group, hinted:Set<string> }
 
-  /* Fit text — no lower font-size limit; binary-search font size, then scale if still needed */
+  /* Fit text — single precise scale so label is AS LARGE AS POSSIBLE and centered */
   const BASE_SIZE = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tile-font')) || 14;
-
-  function fitsBox(label, availW, availH){
-    // Use scroll sizes for text width/height independent of transforms
-    return label.scrollWidth <= availW && label.scrollHeight <= availH;
-  }
-
-  function binaryShrinkToFit(label, availW, availH, maxSize){
-    // Find minimal font size that fits, in px (down to 1px). Returns the size used.
-    let lo = 1, hi = Math.max(1, Math.round(maxSize)), best = hi;
-    while (lo <= hi){
-      const mid = (lo + hi) >> 1;
-      label.style.fontSize = mid + 'px';
-      if (fitsBox(label, availW, availH)){
-        best = mid;  // fits, try smaller
-        hi = mid - 1;
-      } else {
-        lo = mid + 1; // too big, go smaller (increase lo because we're searching minimal that fits)
-      }
-    }
-    label.style.fontSize = best + 'px';
-    return best;
-  }
 
   function fitText(tile){
     const label = tile.querySelector('.label') || tile;
 
-    // Reset transforms, start at BASE_SIZE
-    label.style.transform = 'translate(-50%, -50%) scale(1)';
+    // Reset before measuring
     label.style.fontSize  = BASE_SIZE + 'px';
-    label.style.letterSpacing = '0';
+    label.style.transform = 'translate(-50%, -50%) scale(1)';
 
     // Compute available inner space (exclude tile paddings)
     const cs = getComputedStyle(tile);
@@ -278,24 +253,28 @@ button:disabled{ opacity:.5; cursor:not-allowed }
     const availW = Math.max(1, tile.clientWidth  - padX);
     const availH = Math.max(1, tile.clientHeight - padY);
 
-    // Fast path: already fits
-    if (fitsBox(label, availW, availH)) return;
+    // Force layout so measurements are current (helps Safari/iOS)
+    // eslint-disable-next-line no-unused-expressions
+    label.offsetWidth;
 
-    // Step 1: binary search font size down to as low as 1px
-    const sizeUsed = binaryShrinkToFit(label, availW, availH, BASE_SIZE);
-    if (fitsBox(label, availW, availH)) return;
+    // Measure label box at base size
+    const rect = label.getBoundingClientRect();
+    let w = Math.max(1, rect.width);
+    let h = Math.max(1, rect.height);
 
-    // Step 2: even at 1px it doesn't fit → scale as last resort
-    // Keep centered with translate(-50%,-50%)
-    const scaleX = availW / label.scrollWidth;
-    const scaleY = availH / label.scrollHeight;
-    const scale  = Math.max(0.1, Math.min(1, Math.min(scaleX, scaleY)));
+    // Guard against fractional overflow and give a tiny breathing room
+    const fudge = 0.995;             // shrink target by 0.5% to avoid clipping
+    const scaleX = (availW * fudge) / w;
+    const scaleY = (availH * fudge) / h;
+    // We only shrink (<=1). If it already fits, scale remains 1.
+    const scale  = Math.min(1, scaleX, scaleY);
+
     label.style.transform = `translate(-50%, -50%) translateZ(0) scale(${scale})`;
   }
 
   function fitAll(){ $$('.tile').forEach(fitText); }
   window.addEventListener('resize', () => { clearTimeout(window.__rf); window.__rf=setTimeout(fitAll, 80); });
-  // Re-run fit after fonts are loaded to avoid late expansion on mobile
+  // Refit after webfonts load to avoid late expansion
   if (document.fonts && document.fonts.ready) { document.fonts.ready.then(fitAll).catch(()=>{}); }
 
   /* Data */
@@ -357,7 +336,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
       btn.className = 'tile';
       btn.dataset.word = word;
 
-      // Centering wrapper + absolutely centered label
+      // Centered label (we only transform/scale this node)
       const lw = document.createElement('span');
       lw.className = 'label-wrap';
       const label = document.createElement('span');
@@ -404,7 +383,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
       selected.push(word);
     }
 
-    fitText(el);       // re-fit after any class/style change
+    fitText(el);  // re-fit after any class/style change
     updateCheckUI();
   }
 
