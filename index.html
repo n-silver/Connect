@@ -1,396 +1,575 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>Connections</title>
-<meta name="format-detection" content="telephone=no">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<!-- Montserrat font -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+<title>Connect</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="format-detection" content="telephone=no" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet" />
+
 <style>
-  :root {
-    --bg:#fafafa; --fg:#111; --muted:#6b7280; --card:#fff; --border:#e5e7eb; --focus:#0b57d0;
-    --tile-font: 14px;     /* default size (media queries may lower this) */
-    --tile-font-min: 10px; /* minimum size when auto-fitting */
-    --tile-h: 64px;        /* uniform tile height; JS updates to tallest solved group */
-  }
-  html, body { height:100%; }
-  *, *::before, *::after { -webkit-text-fill-color: currentColor; box-sizing:border-box; }
-  body { margin:0; font-family:'Montserrat', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:var(--bg); color:var(--fg); }
-  .wrap { max-width:900px; margin:0 auto; padding:16px; }
-  h1 { margin:8px 0 12px; font-size:22px; font-weight:700; letter-spacing:.2px; }
+/* -------------------- Design tokens -------------------- */
+:root{
+  --bg:#fafafa; --fg:#111; --muted:#6b7280; --card:#fff; --border:#e5e7eb; --focus:#0b57d0;
+  --tile-font:14px; --tile-font-min:10px; --tile-h:70px;
 
-  /* Minimal toolbar/buttons */
-  .toolbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px; }
-  select, button { border:1px solid var(--border); background:var(--card); border-radius:10px; padding:8px 10px; font-size:14px; cursor:pointer; color:var(--fg); -webkit-appearance:none; appearance:none; touch-action:manipulation; }
-  a { color: inherit; text-decoration: none; }
-  button { font-weight:600; }
-  button:disabled { opacity:.5; cursor:not-allowed; }
+  --radius:6px;
+  --radius-btn:var(--radius);
+  --radius-input:var(--radius);
+  --radius-tile:var(--radius);
+  --radius-solved:var(--radius);
 
-  .solved-list { display:none; }
-  .solved { border:1px solid var(--border); border-radius:12px; padding:8px 10px; font-weight:600; display:flex; flex-wrap:wrap; gap:8px; align-items:center; background:var(--card); }
+  --pastel-blue-bg:#e7f9ff;   --pastel-blue-border:#b8ecff;   --pastel-blue-fg:#0e2433;
+  --pastel-yellow-bg:#fff7cc; --pastel-yellow-border:#ffe78a; --pastel-yellow-fg:#3a3200;
+  --pastel-pink-bg:#f4e6ff;   --pastel-pink-border:#dac6ff;   --pastel-pink-fg:#291d3a;
+  --pastel-green-bg:#e6f7e6;  --pastel-green-border:#c9ebc9;  --pastel-green-fg:#0f2a0f;
 
-  .grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; max-width:680px; width:100%; margin:0 auto; }
+  --ring-yellow: var(--pastel-yellow-border);
+  --ring-green:  var(--pastel-green-border);
+  --ring-blue:   var(--pastel-blue-border);
+  --ring-pink:   var(--pastel-pink-border);
 
-  .tile {
-    border:1px solid var(--border);
-    border-radius:14px;
-    background:var(--card);
-    font-weight:700;
-    font-size:var(--tile-font);
-    letter-spacing:.2px;
-    padding:0 10px;
-    display:flex; align-items:center; justify-content:center;
-    box-shadow:0 1px 2px rgba(0,0,0,.05);
-    transition: background .15s ease, border-color .15s ease, transform .15s ease;
-    user-select:none; overflow:hidden; white-space:nowrap; color: var(--fg);
-  }
-  /* Regular tiles adopt the tallest solved-group height for uniform rows */
-  .tile:not(.solved-group) { height: var(--tile-h); }
+  --sel-ring:3px;  /* selected tiles */
+  --hint-ring:2px; /* hinted tiles */
 
-  .tile:hover { background:#f3f4f6; }
-  .tile.sel { background:#efefef; border-color:var(--border); }
-  .tile.solved { opacity:.95; }
-  .tile:focus-visible { outline:2px solid var(--focus); outline-offset:2px; }
+  --btn-ready-fg:#fff;
+  --logo-h: clamp(28px, 6vw, 40px);
+}
 
-  .status { margin:14px 0; font-size:14px; color:var(--muted); min-height:1.5em; text-align:center; }
+/* -------------------- Base -------------------- */
+html,body{height:100%}
+*,*::before,*::after{box-sizing:border-box; -webkit-text-fill-color:currentColor}
+body{
+  margin:0;
+  font-family:'Montserrat',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  background:var(--bg); color:var(--fg);
+}
+.wrap{max-width:1200px; margin:0 auto; padding:16px}
 
-  /* Pastel palette (blue, yellow, pink, green) for solved groups */
-  .p-blue   { background:#e8f2ff; border-color:#cfe5ff; color:#0f253a; }
-  .p-yellow { background:#fff7cc; border-color:#ffe78a; color:#3a3200; }
-  .p-pink   { background:#ffe0ea; border-color:#ffc3d6; color:#3a0e20; }
-  .p-green  { background:#e6f7e6; border-color:#c9ebc9; color:#0f2a0f; }
+/* -------------------- Top bar -------------------- */
+.topbar{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding-bottom:8px; margin-bottom:16px; position:relative;
+}
+.topbar::after{
+  content:""; position:absolute; left:50%; transform:translateX(-50%);
+  bottom:-0.5px; width:100vw; height:1px; background:var(--border); pointer-events:none;
+}
+.topbar .brand{ display:flex; align-items:center; gap:8px; text-decoration:none }
+.topbar .brand .logo{ display:block; height:var(--logo-h); width:auto }
+.date-slot select{
+  min-width:110px; white-space:nowrap;
+  border:1px solid var(--border); background:var(--card); color:var(--fg);
+  border-radius:var(--radius-input); padding:8px 10px; font-size:14px; cursor:pointer; appearance:none;
+}
 
-  /* Solved group container inside the grid */
-  .solved-group { 
-    grid-column:1 / -1; 
-    padding:12px; 
-    border-radius:14px; 
-    text-align:center; 
-    display:flex; 
-    flex-direction:column; 
-    gap:4px;            /* tighter spacing between title and answers */
-  }
-  .solved-title { 
-    font-weight:700; 
-    font-size:14px; 
-    letter-spacing:.2px; 
-    margin:0; 
-    text-align:center; 
-  }
-  /* Answers line — lighter weight, comma-separated, compact spacing */
-  .solved-answers {
-    font-weight:500;           
-    font-size:13px;
-    letter-spacing:.1px;
-    line-height:1.2;
-    margin:0;
-    padding:0 4px;
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
-  }
+/* -------------------- Actions -------------------- */
+.actions{ display:flex; justify-content:center; align-items:center; gap:8px; margin-top:12px }
+button{
+  border:1px solid var(--border); background:var(--card); color:var(--fg);
+  border-radius:var(--radius-btn); padding:10px 16px; font-size:14px; font-weight:700; cursor:pointer;
+}
+button:disabled{ opacity:.5; cursor:not-allowed }
+.check-btn.ready{
+  border:1px solid var(--border);
+  color:var(--btn-ready-fg);
+  background:linear-gradient(120deg,
+    var(--ring-yellow) 0%,
+    var(--ring-green)  25%,
+    var(--ring-blue)   50%,
+    var(--ring-pink)   75%,
+    var(--ring-yellow) 100%);
+  background-size:320% 320%;
+  animation:btnFlow 16s ease-in-out infinite;
+}
+@keyframes btnFlow{ 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
 
-  /* ===== Mobile-friendly tweaks while keeping 4 columns ===== */
-  @media (max-width: 600px) {
-    .wrap { padding:12px; }
-    .grid { gap:6px; max-width:100%; }
-    :root { --tile-font: 13px; --tile-font-min: 9px; }
-    select, button { font-size:13px; padding:8px 9px; }
-  }
-  @media (max-width: 360px) {
-    :root { --tile-font: 12px; --tile-font-min: 8px; }
-    .toolbar { gap:6px; }
-  }
+/* -------------------- Grid & tiles -------------------- */
+.grid{
+  display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px;
+  max-width:1200px; margin:0 auto;
+}
+.tile{
+  position:relative;
+  height:var(--tile-h); border:1px solid var(--border); border-radius:var(--radius-tile); background:var(--card);
+  font-weight:700; font-size:var(--tile-font); letter-spacing:.2px; padding:0 10px;
+  display:flex; align-items:center; justify-content:center; white-space:nowrap; overflow:hidden;
+  box-shadow:0 1px 2px rgba(0,0,0,.05); transition:background .15s ease,border-color .15s ease,transform .15s ease;
+  color:var(--fg); user-select:none;
+}
+.tile:focus-visible{ outline:2px solid var(--focus); outline-offset:2px }
+.tile.solved{ opacity:.95 }
+
+/* Only the word should be measured/resized */
+.tile .label{
+  display:inline-block;
+  max-width:100%;
+  line-height:1.1;
+  pointer-events:none;
+}
+
+/* Animated gradient borders (selected + hinted) */
+.tile.sel,
+.tile.hint{
+  border: var(--sel-ring) solid transparent; /* default selected thickness */
+  border-radius: var(--radius-tile);
+  background:
+    linear-gradient(var(--card), var(--card)) padding-box,
+    linear-gradient(120deg,
+      var(--ring-yellow) 0%,
+      var(--ring-green)  25%,
+      var(--ring-blue)   50%,
+      var(--ring-pink)   75%,
+      var(--ring-yellow) 100%) border-box;
+  background-size:100% 100%, 320% 320%;
+  background-position:0 0, 0% 50%;
+  animation:tileBorderFlow 16s ease-in-out infinite;
+}
+.tile.hint{
+  border-width:var(--hint-ring);   /* 2px hinted ring */
+  overflow:visible;                /* allow overlay to sit on ring */
+}
+@keyframes tileBorderFlow{ 0%{background-position:0 0, 0% 50%} 50%{background-position:0 0, 100% 50%} 100%{background-position:0 0, 0% 50%} }
+
+/* -------------------- Hinted overlay (donut mask with tiny outer bleed) -------------------- */
+.hint-overlay{
+  position:absolute;
+  inset:calc(-1 * var(--hint-ring));
+  border-radius:calc(var(--radius-tile) + var(--hint-ring));
+  pointer-events:none;
+  z-index:4;
+}
+.hint-overlay .sweep{
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+
+  /* Rotate by changing the conic 'from' angle; the element stays static */
+  background:
+    conic-gradient(
+      from var(--angle, 0deg),
+      rgba(255,255,255,var(--opa, .55)) 0%,
+      rgba(255,255,255,var(--opa, .55)) var(--opaqueStopA, 82%),
+      rgba(255,255,255,var(--midAlpha, .33)) var(--opaqueStopB, 85%),
+      rgba(255,255,255,0) var(--opaqueStopB, 85%),
+      rgba(255,255,255,0) 100%
+    );
+
+  /* Mask image (luminance) is supplied from JS; it's a rounded-rect donut with outer bleed */
+  mask-size:100% 100%; -webkit-mask-size:100% 100%;
+  mask-repeat:no-repeat; -webkit-mask-repeat:no-repeat;
+  mask-position:0 0; -webkit-mask-position:0 0;
+  mask-mode:luminance;
+}
+
+/* -------------------- Solved groups -------------------- */
+.solved-group{
+  grid-column:1 / -1; padding:12px; border-radius:var(--radius-solved);
+  text-align:center; display:flex; flex-direction:column; gap:4px;
+}
+.solved-title{ font-weight:700; font-size:14px; letter-spacing:.2px; margin:0 }
+.solved-words-line{ font-weight:500; font-size:14px; opacity:.95 }
+
+/* Pastel fills */
+.tile.solved.solved-group.p-blue   { background:var(--pastel-blue-bg)!important;   border-color:var(--pastel-blue-border)!important;   color:var(--pastel-blue-fg)!important }
+.tile.solved.solved-group.p-yellow { background:var(--pastel-yellow-bg)!important; border-color:var(--pastel-yellow-border)!important; color:var(--pastel-yellow-fg)!important }
+.tile.solved.solved-group.p-pink   { background:var(--pastel-pink-bg)!important;   border-color:var(--pastel-pink-border)!important;   color:var(--pastel-pink-fg)!important }
+.tile.solved.solved-group.p-green  { background:var(--pastel-green-bg)!important;  border-color:var(--pastel-green-border)!important;  color:var(--pastel-green-fg)!important }
+
+/* A11y */
+.sr-only{ position:absolute!important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0 }
+
+/* Motion prefs */
+@media (prefers-reduced-motion:reduce){
+  .check-btn.ready{ animation:none }
+  .tile.sel,.tile.hint{ animation:none }
+}
+
+/* Small screens */
+@media (max-width:360px){
+  :root{ --tile-font:13px; --tile-h:78px }
+  .date-slot select{ min-width:160px }
+}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>Connections</h1>
+  <div class="wrap">
+    <div class="topbar">
+      <a class="brand" href="./" aria-label="Connect home">
+        <img class="logo" src="logo.png" srcset="logo.png 1x, logo@2x.png 2x" alt="Connect" decoding="async" fetchpriority="high" />
+        <span class="sr-only">connect</span>
+      </a>
+      <div class="date-slot">
+        <label for="puzzle-select" class="sr-only">Choose puzzle</label>
+        <select id="puzzle-select" aria-label="Choose puzzle"></select>
+      </div>
+    </div>
 
-  <div class="toolbar">
-    <label for="puzzle-select" class="sr-only" style="position:absolute;left:-9999px">Choose puzzle</label>
-    <select id="puzzle-select" aria-label="Choose puzzle"></select>
-    <button id="btn-reset" title="Reset current puzzle">Reset</button>
-    <button id="btn-check" title="Check selected tiles">Check (<span id="sel-count">0</span>/4)</button>
-    <button id="btn-help" title="Reveal one random group">Help</button>
-    <button id="btn-giveup" title="Reveal all groups">Give Up</button>
-    <span id="meta" class="sub" aria-live="polite"></span>
+    <div id="solved" class="solved-list" aria-live="polite"></div>
+    <div id="grid" class="grid" role="grid" aria-label="Connections grid of 16 tiles"></div>
+
+    <div class="actions">
+      <button id="btn-help"  class="help-btn"  title="Reveal two tiles">Help</button>
+      <button id="btn-check" class="check-btn" title="Check selected tiles" aria-disabled="true">Check</button>
+    </div>
   </div>
 
-  <div id="solved" class="solved-list" aria-live="polite"></div>
-  <div id="grid" class="grid" role="grid" aria-label="Connections grid of 16 tiles"></div>
-  <div id="msg" class="status" aria-live="polite"></div>
-</div>
-
-<!-- ======== EMBED YOUR JSON HERE (replace the entire object) ======== -->
-<script id="conn-data" type="application/json">
-
-</script>
-<!-- ================================================================== --></script>
 <script>
-(function () {
-  // Helpers
-  const $ = (sel, root = document) => root.querySelector(sel);
-  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
-  const shuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
+(function(){
+  /* -------------------- HINT OVERLAY CONFIG (tweak me) -------------------- */
+  const HINTCFG = {
+    opacity: 0.55,       // 0..1  => frosted wedge alpha
+    opaquePct: 85,       // % opaque section
+    clearPct: 15,        // % clear section (info only; total is 100%)
+    featherPct: 8,       // % width of fade (transition softness)
+    speedDegPerSec: 22.5 // rotation speed (degrees per second), clockwise
+  };
+  // Tiny outer overdraw to kill DPR/AA slivers at outer corners
+  const MASK_BLEED_PX = 0.85; // ↑ increase to 1.0 if you ever see a seam on certain devices
 
-  // Pastel palette classes in the order we’ll apply to solved groups
-  const PASTELS = ['p-blue','p-yellow','p-pink','p-green'];
+  (function clampHintCfg(c){
+    c.opacity      = Math.max(0, Math.min(1, c.opacity));
+    c.opaquePct    = Math.max(0, Math.min(100, c.opaquePct));
+    c.clearPct     = Math.max(0, Math.min(100, c.clearPct));
+    const leftover = Math.max(0, 100 - c.opaquePct - c.clearPct);
+    c.featherPct   = Math.max(0, Math.min(100, c.featherPct, c.opaquePct, c.clearPct + leftover));
+  })(HINTCFG);
 
-  // State
-  let payload = null;
-  let puzzles = [];
-  let currentIndex = 0;
+  /* -------------------- Helpers -------------------- */
+  const $  = (s, r=document) => r.querySelector(s);
+  const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
+  const shuffle = a => { for (let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]] } return a };
+
+  /* -------------------- Elements -------------------- */
+  let sel, grid, btnCheck, btnHelp;
+
+  /* -------------------- State -------------------- */
+  let manifest = [];
+  const cache = new Map(); // date -> puzzle
+  let currentDate = null;
+  let currentPuzzle = null;
   let selected = [];
-  let solvedGroups = []; // array of category objects, in solve order
-  let layout = [];       // current 16-word layout order
+  let solvedGroups = [];
+  let layout = [];
+  let stagedHelp = null; // { group, hinted:Set<string> }
 
-  // Elements
-  const sel = $('#puzzle-select');
-  const grid = $('#grid');
-  const solvedList = $('#solved');
-  const btnReset = $('#btn-reset');
-  const btnCheck = $('#btn-check');
-  const btnHelp = $('#btn-help');
-  const btnGiveUp = $('#btn-giveup');
-  const selCount = $('#sel-count');
-  const msg = $('#msg');
-  const meta = $('#meta');
+  /* -------------------- Fit text -------------------- */
+  const BASE_SIZE = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tile-font')) || 14;
+  const MIN_SIZE  = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tile-font-min')) || 10;
 
-  function loadEmbedded() {
-    try {
-      const raw = $('#conn-data').textContent || '{}';
-      payload = JSON.parse(raw);
-      puzzles = payload.puzzles ? [...payload.puzzles] : [];
-      // Newest first (by date, then number)
-      puzzles.sort((a,b) => {
-        const ad = a.date || "", bd = b.date || "";
-        if (ad === bd) return (b.nyt_number||0) - (a.nyt_number||0);
-        return ad < bd ? 1 : -1;
-      });
-    } catch (e) {
-      alert('Failed to parse embedded JSON. Make sure it is valid.');
-      console.error(e);
+  function fitText(tile){
+    const label = tile.querySelector('.label') || tile;
+    label.style.fontSize = BASE_SIZE + 'px';
+    const fits = () => (label.scrollWidth <= tile.clientWidth) && (label.scrollHeight <= tile.clientHeight);
+    if (fits()) return;
+    for (let s=BASE_SIZE-1; s>=MIN_SIZE; s--){ label.style.fontSize = s + 'px'; if (fits()) break; }
+  }
+  function fitAll(){ $$('.tile').forEach(fitText); }
+  window.addEventListener('resize', () => { clearTimeout(window.__rf); window.__rf=setTimeout(fitAll, 80); });
+
+  /* -------------------- Data -------------------- */
+  async function fetchJSON(cands){
+    const list = Array.isArray(cands)?cands:[cands];
+    for (const url of list){
+      try{ const res = await fetch(url, { cache:'no-store' }); if (!res.ok) throw 0; return await res.json(); }catch{}
     }
+    throw new Error('fetch failed: '+list.join(', '));
+  }
+  function todayUK(){
+    const p = new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+    const y=p.find(x=>x.type==='year').value, m=p.find(x=>x.type==='month').value, d=p.find(x=>x.type==='day').value;
+    return `${y}-${m}-${d}`;
+  }
+  const PREVIEW = new URLSearchParams(location.search).has('preview');
+
+  async function loadEligibleDates(){
+    const all = await fetchJSON(['puzzles/manifest.json','/puzzles/manifest.json']); // newest-first
+    if (PREVIEW) return all;
+    const cutoff = todayUK();
+    const elig = all.filter(d => d <= cutoff);
+    return elig.length ? elig : all;
+  }
+  async function getPuzzle(dateISO){
+    if (cache.has(dateISO)) return cache.get(dateISO);
+    const data = await fetchJSON([`puzzles/${dateISO}.json`,`/puzzles/${dateISO}.json`]);
+    cache.set(dateISO, data); return data;
   }
 
-  function populateSelect() {
-    sel.innerHTML = "";
-    puzzles.forEach((p, i) => {
-      const opt = document.createElement('option');
-      opt.value = i;
-      opt.textContent = `${p.date || 'Unknown date'}${p.nyt_number ? ' (#' + p.nyt_number + ')' : ''}`;
-      sel.appendChild(opt);
+  /* -------------------- UI helpers -------------------- */
+  function setDates(dates){
+    sel.innerHTML = dates.map(d => `<option value="${d}">${d}</option>`).join('');
+  }
+  function updateCheckUI(){
+    const ready = selected.length === 4;
+    btnCheck.classList.toggle('ready', ready);
+    btnCheck.setAttribute('aria-disabled', ready ? 'false' : 'true');
+  }
+  const getWord = el => el.dataset.word || el.querySelector('.label')?.textContent || '';
+
+  /* -------------------- Conic-gradient hint overlay (donut mask with outer bleed) -------------------- */
+  function buildConicStopsVars(style){
+    const A = HINTCFG.opaquePct;   // opaque sector %
+    const F = HINTCFG.featherPct;  // transition width %
+    const stopA = Math.max(0, A - F/2);      // end of solid opaque
+    const stopB = Math.min(100, A + F/2);    // end of feather/start of clear
+    const midAlpha = Math.max(0, Math.min(1, HINTCFG.opacity * 0.6)); // softer mid
+    style.setProperty('--opaqueStopA', stopA + '%');
+    style.setProperty('--opaqueStopB', stopB + '%');
+    style.setProperty('--midAlpha', midAlpha.toString());
+    style.setProperty('--opa', HINTCFG.opacity.toString());
+  }
+
+  function ensureHintOverlay(btn){
+    if (!btn.isConnected || btn.offsetWidth === 0 || btn.offsetHeight === 0){
+      requestAnimationFrame(() => ensureHintOverlay(btn));
+      return;
+    }
+    if (btn.querySelector('.hint-overlay')) return;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'hint-overlay';
+    btn.appendChild(wrap);
+
+    const sweep = document.createElement('div');
+    sweep.className = 'sweep';
+    wrap.appendChild(sweep);
+
+    // Read tokens
+    const csRoot = getComputedStyle(document.documentElement);
+    const csBtn  = getComputedStyle(btn);
+    const ringPx     = parseFloat(csRoot.getPropertyValue('--hint-ring')) || 2;
+    const tileRadius = parseFloat(csBtn.borderRadius) ||
+                       parseFloat(csRoot.getPropertyValue('--radius-tile')) || 0;
+
+    // Measure overlay box
+    const rect = wrap.getBoundingClientRect();
+    const W = Math.max(1, Math.round(rect.width));
+    const H = Math.max(1, Math.round(rect.height));
+
+    /* Donut mask with outer bleed:
+       - Outer rounded-rect: expands by MASK_BLEED_PX in each direction; radius += MASK_BLEED_PX
+       - Inner rounded-rect: exact inner edge (no bleed) to avoid showing overlay inside tile face
+    */
+    const outerBleed = MASK_BLEED_PX;
+    const R_outer = tileRadius + ringPx + outerBleed;
+    const inset   = ringPx * 2;           // inner edge inset (no bleed)
+    const R_inner = Math.max(0, tileRadius);
+
+    const outerX = -outerBleed;
+    const outerY = -outerBleed;
+    const outerW = W + outerBleed * 2;
+    const outerH = H + outerBleed * 2;
+
+    const innerX = inset;
+    const innerY = inset;
+    const innerW = Math.max(0, W - 2*inset);
+    const innerH = Math.max(0, H - 2*inset);
+
+    const svg =
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" shape-rendering="geometricPrecision">
+         <!-- White outer RR slightly oversized -->
+         <rect x="${outerX}" y="${outerY}" width="${outerW}" height="${outerH}" rx="${R_outer}" ry="${R_outer}" fill="white"/>
+         <!-- Black inner RR exactly at tile inner edge -->
+         <rect x="${innerX}" y="${innerY}" width="${innerW}" height="${innerH}" rx="${R_inner}" ry="${R_inner}" fill="black"/>
+       </svg>`;
+
+    const dataUrl = `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}")`;
+    sweep.style.webkitMaskImage = dataUrl;
+    sweep.style.maskImage = dataUrl;
+
+    // Set gradient stop variables and start angle
+    buildConicStopsVars(sweep.style);
+    sweep.style.setProperty('--angle', '0deg');
+
+    // Rotate CLOCKWISE by updating only the conic 'from' angle
+    const speed = HINTCFG.speedDegPerSec;
+    let rafId = 0, start = 0;
+    const tick = ts => {
+      if (!start) start = ts;
+      const angle = ((ts - start) / 1000) * speed % 360;
+      sweep.style.setProperty('--angle', angle + 'deg');
+      if (document.body.contains(wrap)) rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+
+    // Cleanup if removed
+    const mo = new MutationObserver(() => {
+      if (!document.body.contains(btn)){
+        cancelAnimationFrame(rafId);
+        mo.disconnect();
+      }
     });
-    sel.addEventListener('change', () => { currentIndex = Number(sel.value); startPuzzle(); });
+    mo.observe(document.body, { childList:true, subtree:true });
   }
 
-  // ===== Layout helpers =====
-  function wordsOfSolved() {
-    return solvedGroups.flatMap(g => g.words);
-  }
-  function isSolvedWord(w) {
-    return solvedGroups.some(g => g.words.includes(w));
+  function removeHintOverlay(btn){
+    btn.classList.remove('hint');
+    const overlay = btn.querySelector('.hint-overlay');
+    if (overlay) overlay.remove();
   }
 
-  function buildInitialLayout(p) {
-    const words = p.categories.flatMap(c => c.words);
-    shuffle(words);
-    layout = words;
-  }
-
-  function rebuildLayoutSolvedFirst() {
-    const solvedWords = wordsOfSolved();
-    const seen = new Set();
-    const top = [];
-    for (const g of solvedGroups) {
-      for (const w of g.words) {
-        if (!seen.has(w)) { top.push(w); seen.add(w); }
-      }
-    }
-    const rest = layout.filter(w => !seen.has(w));
-    layout = [...top, ...rest];
-  }
-
-  // --- Per-tile auto-fit (reduce font-size only if needed) ---
-  function fits(el){
-    return el.scrollWidth <= el.clientWidth && el.scrollHeight <= el.clientHeight;
-  }
-  function fitText(el){
-    // Use *current* CSS variables so media queries / user zooms apply
-    const rootStyle = getComputedStyle(document.documentElement);
-    const base = parseInt(rootStyle.getPropertyValue('--tile-font')) || 14;
-    const min  = parseInt(rootStyle.getPropertyValue('--tile-font-min')) || 10;
-
-    el.style.fontSize = base + 'px';
-    if (fits(el)) return;
-    let size = base;
-    while (size > min) {
-      size -= 1;
-      el.style.fontSize = size + 'px';
-      if (fits(el)) break;
-    }
-  }
-  function fitAllTiles(){ [...$$(".tile"), ...$$("[data-fit]")].forEach(fitText); }
-
-  // Measure tallest solved-group height and apply it to regular tiles
-  function updateUniformTileHeight(){
-    const groups = Array.from(grid.querySelectorAll('.solved-group'));
-    if (groups.length){
-      let maxH = 0;
-      for (const g of groups){
-        const h = Math.ceil(g.getBoundingClientRect().height);
-        if (h > maxH) maxH = h;
-      }
-      document.documentElement.style.setProperty('--tile-h', maxH + 'px');
+  function applyHintStateForWord(btn, word){
+    const shouldHint = stagedHelp && stagedHelp.hinted && stagedHelp.hinted.has(word) && !btn.classList.contains('sel');
+    if (shouldHint){
+      btn.classList.add('hint');
+      ensureHintOverlay(btn);
     } else {
-      document.documentElement.style.setProperty('--tile-h', '64px');
+      removeHintOverlay(btn);
     }
   }
 
-  // Re-fit and re-sync heights on viewport/content changes
-  const ro = new ResizeObserver(() => {
-    fitAllTiles();
-    updateUniformTileHeight();
-  });
-
-  function renderGrid() {
+  /* -------------------- Render -------------------- */
+  function renderGrid(){
     grid.innerHTML = '';
 
-    // 1) Render solved groups (span full width)
+    // Solved groups (full width)
     solvedGroups.forEach((g, idx) => {
-      const cont = document.createElement('div');
-      cont.className = `tile solved solved-group ${PASTELS[idx] || PASTELS[PASTELS.length - 1]}`;
-      cont.style.gridColumn = '1 / -1';
-
-      const title = document.createElement('div');
-      title.className = 'solved-title';
-      title.textContent = g.title;
-
-      const answers = document.createElement('div');
-      answers.className = 'solved-answers';
-      answers.textContent = g.words.join(', ');
-
-      cont.appendChild(title);
-      cont.appendChild(answers);
-      grid.appendChild(cont);
-      ro.observe(cont);
+      const wrap = document.createElement('div');
+      wrap.className = `tile solved solved-group p-${['blue','yellow','pink','green'][idx] || 'yellow'}`;
+      wrap.style.gridColumn = '1 / -1';
+      wrap.innerHTML = `<div class="solved-title">${g.title}</div><div class="solved-words-line">${g.words.join(', ')}</div>`;
+      grid.appendChild(wrap);
     });
 
-    // 2) Render remaining (unsolved) tiles
-    for (const w of layout) {
+    // Remaining tiles
+    for (const word of layout){
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'tile';
-      btn.textContent = w;
-      btn.addEventListener('click', () => toggleWord(btn, w));
+      btn.dataset.word = word;
 
+      const label = document.createElement('span');
+      label.className = 'label';
+      label.textContent = word;
+
+      btn.appendChild(label);
+      btn.addEventListener('click', () => toggleWord(btn, word));
       grid.appendChild(btn);
-      ro.observe(btn);
+
+      applyHintStateForWord(btn, word);
     }
 
-    fitAllTiles();
-    updateUniformTileHeight();
+    fitAll();
   }
 
-  // ===== Game flow =====
-  function startPuzzle() {
-    selected = [];
-    solvedGroups = [];
-    $('#sel-count').textContent = '0';
-    msg.textContent = '';
+  /* -------------------- Game logic -------------------- */
+  const isSolvedWord = w => solvedGroups.some(g => g.words.includes(w));
+  const buildInitialLayout = p => { layout = shuffle(p.categories.flatMap(c => c.words)); };
 
-    const p = puzzles[currentIndex];
-    buildInitialLayout(p);
-    renderGrid();
-    meta.textContent = `Date: ${p.date || '—'}${p.nyt_number ? ' • #' + p.nyt_number : ''}`;
-  }
-
-  function clearSelectionClasses() {
-    $$('.tile.sel').forEach(n => n.classList.remove('sel'));
-  }
-
-  function toggleWord(el, word) {
+  function toggleWord(el, word){
     if (isSolvedWord(word)) return;
-    const i = selected.indexOf(word);
-    if (i >= 0) {
-      selected.splice(i,1);
+
+    if (el.classList.contains('sel')){
       el.classList.remove('sel');
+      const i = selected.indexOf(word);
+      if (i >= 0) selected.splice(i,1);
+      applyHintStateForWord(el, word); // restore hint if applicable
     } else {
-      if (selected.length === 4) {
-        clearSelectionClasses();
-        selected = [word];
-        el.classList.add('sel');
-      } else {
-        selected.push(word);
-        el.classList.add('sel');
+      if (selected.length === 4){
+        $$('.tile.sel').forEach(n => {
+          n.classList.remove('sel');
+          applyHintStateForWord(n, getWord(n));
+        });
+        selected = [];
       }
+      el.classList.add('sel');
+      selected.push(word);
+      removeHintOverlay(el); // hint off while selected
     }
-    $('#sel-count').textContent = String(selected.length);
+
+    updateCheckUI();
   }
 
-  function checkSelection() {
-    if (selected.length !== 4) return;
-    const p = puzzles[currentIndex];
+  function checkSelection(){
+    if (!currentPuzzle || selected.length !== 4) return;
     const pick = new Set(selected);
-    const match = p.categories.find(c => c.words.every(w => pick.has(w)));
+    const match = currentPuzzle.categories.find(c => c.words.every(w => pick.has(w)));
 
-    if (match && !solvedGroups.some(g => g.title === match.title)) {
-      revealGroup(match);
-      msg.textContent = `✓ ${match.title}`;
-    } else {
-      msg.textContent = '✗ Not a group';
-      clearSelectionClasses();
+    if (match && !solvedGroups.some(g => g.title === match.title)){
+      if (stagedHelp && stagedHelp.group && stagedHelp.group.title === match.title) stagedHelp = null;
+      solvedGroups.push(match);
+      const gset = new Set(match.words);
+      layout = layout.filter(w => !gset.has(w));
       selected = [];
-      $('#sel-count').textContent = '0';
+      renderGrid();
+    } else {
+      $$('.tile.sel').forEach(n => {
+        n.classList.remove('sel');
+        applyHintStateForWord(n, getWord(n));
+      });
+      selected = [];
+    }
+    updateCheckUI();
+  }
+
+  function handleHelp(){
+    if (!currentPuzzle) return;
+
+    // Second press: finish staged group
+    if (stagedHelp && stagedHelp.group){
+      const g = stagedHelp.group;
+      if (!solvedGroups.some(x=>x.title===g.title)){
+        solvedGroups.push(g);
+        const gset = new Set(g.words);
+        layout = layout.filter(w => !gset.has(w));
+      }
+      stagedHelp = null;
+      selected = [];
+      renderGrid();
+      updateCheckUI();
+      return;
+    }
+
+    // First press: stage random unsolved group, hint two words (brought to front)
+    const unsolved = currentPuzzle.categories.filter(c => !solvedGroups.some(g => g.title === c.title));
+    if (!unsolved.length) return;
+    const group = unsolved[Math.floor(Math.random()*unsolved.length)];
+    const words = shuffle([...group.words]);
+    const two = words.slice(0,2);
+
+    stagedHelp = { group, hinted:new Set(two) };
+    const rest = layout.filter(w => !stagedHelp.hinted.has(w));
+    layout = [...two, ...rest];
+    renderGrid();
+  }
+
+  /* -------------------- Apply date -------------------- */
+  async function applyDate(dateISO){
+    currentDate   = dateISO;
+    currentPuzzle = await getPuzzle(dateISO);
+    selected=[]; solvedGroups=[]; layout=[]; stagedHelp=null;
+    buildInitialLayout(currentPuzzle);
+    renderGrid();
+    updateCheckUI();
+  }
+
+  /* -------------------- Boot -------------------- */
+  async function boot(){
+    try{
+      manifest = await loadEligibleDates();
+      if (!manifest.length) throw new Error('No dates in manifest');
+      setDates(manifest);
+      const def = manifest[0];
+      sel.value = def;
+      await applyDate(def);
+      sel.addEventListener('change', () => applyDate(sel.value));
+      btnCheck.addEventListener('click', checkSelection);
+      btnHelp  .addEventListener('click', handleHelp);
+    }catch(e){
+      console.error(e);
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--muted)">Failed to load puzzles.</div>';
     }
   }
 
-  function revealGroup(group) {
-    solvedGroups.push(group);
-    const gset = new Set(group.words);
-    layout = layout.filter(w => !gset.has(w));
-    selected = [];
-    $('#sel-count').textContent = '0';
-    renderGrid();
-    if (solvedGroups.length === 4) msg.textContent = '🎉 Completed!';
-  }
-
-  function helpSolveOne(randomize=true) {
-    const p = puzzles[currentIndex];
-    const unsolved = p.categories.filter(c => !solvedGroups.some(g => g.title === c.title));
-    if (!unsolved.length) return;
-    const group = randomize ? unsolved[Math.floor(Math.random()*unsolved.length)] : unsolved[0];
-    revealGroup(group);
-    msg.textContent = `🪄 Helped: ${group.title}`;
-  }
-
-  function giveUpRevealAll() {
-    const p = puzzles[currentIndex];
-    const unsolved = p.categories.filter(c => !solvedGroups.some(g => g.title === c.title));
-    unsolved.forEach(g => revealGroup(g));
-    msg.textContent = '👀 Revealed all answers.';
-  }
-
-  // Wire up controls
-  $('#btn-check').addEventListener('click', checkSelection);
-  $('#btn-reset').addEventListener('click', startPuzzle);
-  $('#btn-help').addEventListener('click', () => helpSolveOne(true));
-  $('#btn-giveup').addEventListener('click', giveUpRevealAll);
-
-  // Boot
-  loadEmbedded();
-  if (!puzzles.length) {
-    msg.textContent = 'No puzzles found in embedded JSON.';
-  } else {
-    populateSelect();
-    currentIndex = 0;
-    sel.value = '0';
-    startPuzzle();
-  }
+  document.addEventListener('DOMContentLoaded', () => {
+    sel      = $('#puzzle-select');
+    grid     = $('#grid');
+    btnCheck = $('#btn-check');
+    btnHelp  = $('#btn-help');
+    boot();
+  });
 })();
 </script>
 </body>
