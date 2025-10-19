@@ -14,8 +14,7 @@
 :root{
   --bg:#fafafa; --fg:#111; --muted:#6b7280; --card:#fff; --border:#e5e7eb; --focus:#0b57d0;
 
-  /* Base label size; we will scale from here (no lower limit). */
-  --tile-font:14px;
+  --tile-font:14px;  /* base label font (we scale from here, no lower limit) */
   --tile-h:70px;
 
   --radius:6px;
@@ -110,10 +109,10 @@ button:disabled{ opacity:.5; cursor:not-allowed }
   color:var(--fg); user-select:none;
 }
 
-/* Absolute-centering container for the label */
+/* Absolute-centering container for the label (word tiles only) */
 .label-wrap{ position:relative; width:100%; height:100% }
 
-/* The label is absolutely centered; JS appends scale(...) */
+/* The label is absolutely centered; JS appends scale(...) (word tiles only) */
 .label{
   position:absolute; left:50%; top:50%;
   transform: translate(-50%, -50%); /* JS appends scale(...) */
@@ -165,7 +164,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
   background-position:0 0, 50% 50%;
 }
 
-/* Solved groups */
+/* Solved groups (full-width rows) */
 .solved-group{
   grid-column:1 / -1;
   padding:12px;
@@ -177,6 +176,12 @@ button:disabled{ opacity:.5; cursor:not-allowed }
 }
 .solved-title{ font-weight:700; font-size:14px; letter-spacing:.2px; margin:0 }
 .solved-words-line{ font-weight:500; font-size:14px; opacity:.95 }
+
+/* Pastel fills for solved rows */
+.tile.solved.solved-group.p-blue   { background:var(--pastel-blue-bg)!important;   border-color:var(--pastel-blue-border)!important;   color:var(--pastel-blue-fg)!important }
+.tile.solved.solved-group.p-yellow { background:var(--pastel-yellow-bg)!important; border-color:var(--pastel-yellow-border)!important; color:var(--pastel-yellow-fg)!important }
+.tile.solved.solved-group.p-pink   { background:var(--pastel-pink-bg)!important;   border-color:var(--pastel-pink-border)!important;   color:var(--pastel-pink-fg)!important }
+.tile.solved.solved-group.p-green  { background:var(--pastel-green-bg)!important;  border-color:var(--pastel-green-border)!important;  color:var(--pastel-green-fg)!important }
 
 /* A11y */
 .sr-only{ position:absolute!important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0 }
@@ -236,45 +241,50 @@ button:disabled{ opacity:.5; cursor:not-allowed }
   let layout = [];
   let stagedHelp = null; // { group, hinted:Set<string> }
 
-  /* Fit text — single precise scale so label is AS LARGE AS POSSIBLE and centered */
+  /* Fit label — single precise scale so label is AS LARGE AS POSSIBLE and centered
+     IMPORTANT: only run on elements with .label (word tiles). */
   const BASE_SIZE = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tile-font')) || 14;
 
-  function fitText(tile){
-    const label = tile.querySelector('.label') || tile;
+  function fitLabel(label){
+    if (!label || !label.classList || !label.classList.contains('label')) return;
+    const tile = label.closest('.tile');
+    if (!tile || tile.classList.contains('solved-group')) return; // never touch solved rows
 
     // Reset before measuring
     label.style.fontSize  = BASE_SIZE + 'px';
     label.style.transform = 'translate(-50%, -50%) scale(1)';
 
-    // Compute available inner space (exclude tile paddings)
+    // Available inner space (exclude tile paddings)
     const cs = getComputedStyle(tile);
     const padX = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
     const padY = (parseFloat(cs.paddingTop)  || 0) + (parseFloat(cs.paddingBottom) || 0);
     const availW = Math.max(1, tile.clientWidth  - padX);
     const availH = Math.max(1, tile.clientHeight - padY);
 
-    // Force layout so measurements are current (helps Safari/iOS)
+    // Force layout so measurements are up-to-date (Safari/iOS)
     // eslint-disable-next-line no-unused-expressions
     label.offsetWidth;
 
-    // Measure label box at base size
     const rect = label.getBoundingClientRect();
-    let w = Math.max(1, rect.width);
-    let h = Math.max(1, rect.height);
+    const w = Math.max(1, rect.width);
+    const h = Math.max(1, rect.height);
 
-    // Guard against fractional overflow and give a tiny breathing room
-    const fudge = 0.995;             // shrink target by 0.5% to avoid clipping
+    const fudge = 0.995; // 0.5% breathing room to avoid clipping
     const scaleX = (availW * fudge) / w;
     const scaleY = (availH * fudge) / h;
-    // We only shrink (<=1). If it already fits, scale remains 1.
     const scale  = Math.min(1, scaleX, scaleY);
 
     label.style.transform = `translate(-50%, -50%) translateZ(0) scale(${scale})`;
   }
 
-  function fitAll(){ $$('.tile').forEach(fitText); }
-  window.addEventListener('resize', () => { clearTimeout(window.__rf); window.__rf=setTimeout(fitAll, 80); });
-  // Refit after webfonts load to avoid late expansion
+  function fitAll(){
+    $$('.label').forEach(fitLabel); // only labels, never solved rows
+  }
+
+  window.addEventListener('resize', () => {
+    clearTimeout(window.__rf);
+    window.__rf = setTimeout(fitAll, 80);
+  });
   if (document.fonts && document.fonts.ready) { document.fonts.ready.then(fitAll).catch(()=>{}); }
 
   /* Data */
@@ -320,7 +330,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
   function renderGrid(){
     grid.innerHTML = '';
 
-    // Solved groups (full width)
+    // Solved groups (full width rows)
     solvedGroups.forEach((g, idx) => {
       const wrap = document.createElement('div');
       wrap.className = `tile solved solved-group p-${['blue','yellow','pink','green'][idx] || 'yellow'}`;
@@ -374,7 +384,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
           const w = getWord(n);
           n.classList.remove('sel');
           if (stagedHelp && stagedHelp.hinted && stagedHelp.hinted.has(w)) n.classList.add('hint');
-          fitText(n);
+          const lbl = n.querySelector('.label'); if (lbl) fitLabel(lbl);
         });
         selected = [];
       }
@@ -383,7 +393,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
       selected.push(word);
     }
 
-    fitText(el);  // re-fit after any class/style change
+    const lbl = el.querySelector('.label'); if (lbl) fitLabel(lbl); // only labels
     updateCheckUI();
   }
 
@@ -404,7 +414,7 @@ button:disabled{ opacity:.5; cursor:not-allowed }
         const w = getWord(n);
         n.classList.remove('sel');
         if (stagedHelp && stagedHelp.hinted && stagedHelp.hinted.has(w)) n.classList.add('hint');
-        fitText(n);
+        const lbl = n.querySelector('.label'); if (lbl) fitLabel(lbl);
       });
       selected = [];
       updateCheckUI();
