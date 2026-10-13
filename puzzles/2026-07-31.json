@@ -1,0 +1,41 @@
+{
+  "date": "2026-07-31",
+  "categories": [
+    {
+      "title": "STATUS",
+      "words": [
+        "CONDITION",
+        "SHAPE",
+        "SITUATION",
+        "STATE"
+      ]
+    },
+    {
+      "title": "TOLERATE",
+      "words": [
+        "BEAR",
+        "HANDLE",
+        "STAND",
+        "WEATHER"
+      ]
+    },
+    {
+      "title": "WORD SHORTENINGS, OFTEN",
+      "words": [
+        "ABBREVIATION",
+        "CONTRACTION",
+        "ELISION",
+        "NICKNAME"
+      ]
+    },
+    {
+      "title": "WORDS MADE USING U.S. POSTAL ABBREVIATIONS",
+      "words": [
+        "ALKYLAMIDE",
+        "CALAMARI",
+        "MANDARIN",
+        "MELAMINE"
+      ]
+    }
+  ]
+}
