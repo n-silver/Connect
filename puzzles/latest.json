@@ -1,40 +1,40 @@
 {
-  "date": "2026-08-01",
+  "date": "2026-08-02",
   "categories": [
     {
-      "title": "DISCERNMENT",
+      "title": "HINT",
       "words": [
-        "EYE",
-        "FLAIR",
-        "SENSE",
-        "TASTE"
+        "FLICKER",
+        "SUGGESTION",
+        "TRACE",
+        "WHIFF"
       ]
     },
     {
-      "title": "FASTEN",
+      "title": "TENNIS VERBS",
       "words": [
-        "HITCH",
-        "LASH",
-        "TETHER",
-        "TIE"
+        "SERVE",
+        "SLICE",
+        "SMASH",
+        "VOLLEY"
       ]
     },
     {
-      "title": "SPORTS CHAMPIONSHIP PRIZES",
+      "title": "SUPERHEROES, WITH THE",
       "words": [
-        "BELT",
-        "CUP",
-        "JACKET",
-        "RING"
+        "FLASH",
+        "HULK",
+        "PUNISHER",
+        "THING"
       ]
     },
     {
-      "title": "LOOSE ___",
+      "title": "STARTING WITH FEE, FI, FO, FUM",
       "words": [
-        "CANNON",
-        "CHANGE",
-        "ENDS",
-        "LIPS"
+        "FEED",
+        "FIERY",
+        "FOMENT",
+        "FUMBLE"
       ]
     }
   ]
