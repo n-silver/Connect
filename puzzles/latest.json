@@ -1,40 +1,40 @@
 {
-  "date": "2026-08-02",
+  "date": "2026-08-03",
   "categories": [
     {
-      "title": "HINT",
+      "title": "LOWEST PART",
       "words": [
-        "FLICKER",
-        "SUGGESTION",
-        "TRACE",
-        "WHIFF"
+        "BASE",
+        "BOTTOM",
+        "FOOT",
+        "FOUNDATION"
       ]
     },
     {
-      "title": "TENNIS VERBS",
+      "title": "THINGS YOU CAN SCORE IN SPORTS",
       "words": [
-        "SERVE",
-        "SLICE",
-        "SMASH",
+        "BASKET",
+        "GOAL",
+        "RUN",
+        "TOUCHDOWN"
+      ]
+    },
+    {
+      "title": "WAYS TO PRESERVE FOOD",
+      "words": [
+        "CURE",
+        "DRY",
+        "PICKLE",
+        "SMOKE"
+      ]
+    },
+    {
+      "title": "LOW LANDFORMS WITH A LETTER CHANGED",
+      "words": [
+        "CANNON",
+        "FORGE",
+        "RACINE",
         "VOLLEY"
-      ]
-    },
-    {
-      "title": "SUPERHEROES, WITH THE",
-      "words": [
-        "FLASH",
-        "HULK",
-        "PUNISHER",
-        "THING"
-      ]
-    },
-    {
-      "title": "STARTING WITH FEE, FI, FO, FUM",
-      "words": [
-        "FEED",
-        "FIERY",
-        "FOMENT",
-        "FUMBLE"
       ]
     }
   ]
