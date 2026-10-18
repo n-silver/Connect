@@ -1,0 +1,41 @@
+{
+  "date": "2026-08-05",
+  "categories": [
+    {
+      "title": "DIGITAL NOTIFICATIONS",
+      "words": [
+        "ALERT",
+        "CHIME",
+        "DING",
+        "PING"
+      ]
+    },
+    {
+      "title": "PHOTO",
+      "words": [
+        "PRINT",
+        "SHOT",
+        "SNAP",
+        "STILL"
+      ]
+    },
+    {
+      "title": "KINDS OF CRABS",
+      "words": [
+        "FIDDLER",
+        "HERMIT",
+        "KING",
+        "SNOW"
+      ]
+    },
+    {
+      "title": "LA ___",
+      "words": [
+        "BOHME",
+        "BREA",
+        "PAZ",
+        "SCALA"
+      ]
+    }
+  ]
+}

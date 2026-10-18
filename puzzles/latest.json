@@ -1,40 +1,40 @@
 {
-  "date": "2026-08-04",
+  "date": "2026-08-05",
   "categories": [
     {
-      "title": "SURFACE IMPERFECTIONS",
+      "title": "DIGITAL NOTIFICATIONS",
       "words": [
-        "CHIP",
-        "MARK",
-        "NICK",
-        "SCRATCH"
+        "ALERT",
+        "CHIME",
+        "DING",
+        "PING"
       ]
     },
     {
-      "title": "LANDLOCKED COUNTRIES",
+      "title": "PHOTO",
       "words": [
-        "CHAD",
-        "HUNGARY",
-        "LAOS",
-        "PARAGUAY"
+        "PRINT",
+        "SHOT",
+        "SNAP",
+        "STILL"
       ]
     },
     {
-      "title": "EUROPEAN COUNTRIES MINUS A LETTER",
+      "title": "KINDS OF CRABS",
       "words": [
-        "BULGARI",
-        "CYRUS",
-        "HUNGRY",
-        "SPAN"
+        "FIDDLER",
+        "HERMIT",
+        "KING",
+        "SNOW"
       ]
     },
     {
-      "title": "STARTING WITH WORDS FOR TRENDY",
+      "title": "LA ___",
       "words": [
-        "CHICKEN",
-        "COOLIDGE",
-        "HIPPO",
-        "SMARTIES"
+        "BOHME",
+        "BREA",
+        "PAZ",
+        "SCALA"
       ]
     }
   ]
