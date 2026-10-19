@@ -1,40 +1,40 @@
 {
-  "date": "2026-08-05",
+  "date": "2026-08-06",
   "categories": [
     {
-      "title": "DIGITAL NOTIFICATIONS",
+      "title": "PLACES TO STORE CLOTHES",
       "words": [
-        "ALERT",
-        "CHIME",
-        "DING",
-        "PING"
+        "BUREAU",
+        "CHEST",
+        "TRUNK",
+        "WARDROBE"
       ]
     },
     {
-      "title": "PHOTO",
+      "title": "THINGS THAT COME IN STICKS",
       "words": [
-        "PRINT",
-        "SHOT",
-        "SNAP",
-        "STILL"
+        "BUTTER",
+        "DEODORANT",
+        "DYNAMITE",
+        "INCENSE"
       ]
     },
     {
-      "title": "KINDS OF CRABS",
+      "title": "FAMOUS PERFUMES",
       "words": [
-        "FIDDLER",
-        "HERMIT",
-        "KING",
-        "SNOW"
+        "ANGEL",
+        "COCO",
+        "OBSESSION",
+        "OPIUM"
       ]
     },
     {
-      "title": "LA ___",
+      "title": "STARTING WITH THINGS THAT CLOUD THE AIR",
       "words": [
-        "BOHME",
-        "BREA",
-        "PAZ",
-        "SCALA"
+        "FOGERTY",
+        "HAZEL",
+        "MISTER",
+        "VAPORETTO"
       ]
     }
   ]
