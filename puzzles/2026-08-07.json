@@ -1,0 +1,41 @@
+{
+  "date": "2026-08-07",
+  "categories": [
+    {
+      "title": "SEETHE",
+      "words": [
+        "BOIL",
+        "FUME",
+        "RAVE",
+        "STEAM"
+      ]
+    },
+    {
+      "title": "ALL TALK",
+      "words": [
+        "BLATHER",
+        "GAS",
+        "HOTAIR",
+        "WIND"
+      ]
+    },
+    {
+      "title": "MC THINGS AT MCDONALD'S",
+      "words": [
+        "FLURRY",
+        "MUFFIN",
+        "NUGGETS",
+        "RIB"
+      ]
+    },
+    {
+      "title": "ENDING IN BIRDS",
+      "words": [
+        "ALIBIS",
+        "BALLOON",
+        "ESCROW",
+        "MOHAWK"
+      ]
+    }
+  ]
+}

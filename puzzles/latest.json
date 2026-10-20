@@ -1,40 +1,40 @@
 {
-  "date": "2026-08-06",
+  "date": "2026-08-07",
   "categories": [
     {
-      "title": "PLACES TO STORE CLOTHES",
+      "title": "SEETHE",
       "words": [
-        "BUREAU",
-        "CHEST",
-        "TRUNK",
-        "WARDROBE"
+        "BOIL",
+        "FUME",
+        "RAVE",
+        "STEAM"
       ]
     },
     {
-      "title": "THINGS THAT COME IN STICKS",
+      "title": "ALL TALK",
       "words": [
-        "BUTTER",
-        "DEODORANT",
-        "DYNAMITE",
-        "INCENSE"
+        "BLATHER",
+        "GAS",
+        "HOTAIR",
+        "WIND"
       ]
     },
     {
-      "title": "FAMOUS PERFUMES",
+      "title": "MC THINGS AT MCDONALD'S",
       "words": [
-        "ANGEL",
-        "COCO",
-        "OBSESSION",
-        "OPIUM"
+        "FLURRY",
+        "MUFFIN",
+        "NUGGETS",
+        "RIB"
       ]
     },
     {
-      "title": "STARTING WITH THINGS THAT CLOUD THE AIR",
+      "title": "ENDING IN BIRDS",
       "words": [
-        "FOGERTY",
-        "HAZEL",
-        "MISTER",
-        "VAPORETTO"
+        "ALIBIS",
+        "BALLOON",
+        "ESCROW",
+        "MOHAWK"
       ]
     }
   ]
