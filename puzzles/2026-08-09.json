@@ -1,0 +1,41 @@
+{
+  "date": "2026-08-09",
+  "categories": [
+    {
+      "title": "CLASSIC CHILDREN'S GAMES",
+      "words": [
+        "DUCKDUCKGOOSE",
+        "HOTPOTATO",
+        "LEAPFROG",
+        "MUSICALCHAIRS"
+      ]
+    },
+    {
+      "title": "IMPORTANT PERSON",
+      "words": [
+        "ALPHADOG",
+        "BIGCHEESE",
+        "HEAVYWEIGHT",
+        "TOPBANANA"
+      ]
+    },
+    {
+      "title": "FAMOUS PAINTINGS",
+      "words": [
+        "AMERICANGOTHIC",
+        "CAMPBELL'SSOUPCAN",
+        "SUNFLOWERS",
+        "THESCREAM"
+      ]
+    },
+    {
+      "title": "DOUBLE MISNOMERS (THAT ARE NEITHER PART OF THEIR NAME)",
+      "words": [
+        "CHINESECHECKERS",
+        "ENGLISHHORN",
+        "MANTISSHRIMP",
+        "SWEETBREAD"
+      ]
+    }
+  ]
+}

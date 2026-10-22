@@ -1,40 +1,40 @@
 {
-  "date": "2026-08-08",
+  "date": "2026-08-09",
   "categories": [
     {
-      "title": "FINISH",
+      "title": "CLASSIC CHILDREN'S GAMES",
       "words": [
-        "CLOSE",
-        "END",
-        "STOP",
-        "WRAP"
+        "DUCKDUCKGOOSE",
+        "HOTPOTATO",
+        "LEAPFROG",
+        "MUSICALCHAIRS"
       ]
     },
     {
-      "title": "LACKEY",
+      "title": "IMPORTANT PERSON",
       "words": [
-        "MINION",
-        "POODLE",
-        "PUPPET",
-        "STOOGE"
+        "ALPHADOG",
+        "BIGCHEESE",
+        "HEAVYWEIGHT",
+        "TOPBANANA"
       ]
     },
     {
-      "title": "MUSTACHES",
+      "title": "FAMOUS PAINTINGS",
       "words": [
-        "CHEVRON",
-        "HORSESHOE",
-        "PENCIL",
-        "WALRUS"
+        "AMERICANGOTHIC",
+        "CAMPBELL'SSOUPCAN",
+        "SUNFLOWERS",
+        "THESCREAM"
       ]
     },
     {
-      "title": "HOMOPHONES OF DISNEY CHARACTERS",
+      "title": "DOUBLE MISNOMERS (THAT ARE NEITHER PART OF THEIR NAME)",
       "words": [
-        "ARIAL",
-        "BELL",
-        "DOCK",
-        "MINI"
+        "CHINESECHECKERS",
+        "ENGLISHHORN",
+        "MANTISSHRIMP",
+        "SWEETBREAD"
       ]
     }
   ]
