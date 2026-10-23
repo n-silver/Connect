@@ -1,40 +1,40 @@
 {
-  "date": "2026-08-09",
+  "date": "2026-08-10",
   "categories": [
     {
-      "title": "CLASSIC CHILDREN'S GAMES",
+      "title": "PARTS TO BE GRASPED",
       "words": [
-        "DUCKDUCKGOOSE",
-        "HOTPOTATO",
-        "LEAPFROG",
-        "MUSICALCHAIRS"
+        "GRIP",
+        "HANDLE",
+        "HILT",
+        "KNOB"
       ]
     },
     {
-      "title": "IMPORTANT PERSON",
+      "title": "KINDS OF SCULPTURES",
       "words": [
-        "ALPHADOG",
-        "BIGCHEESE",
-        "HEAVYWEIGHT",
-        "TOPBANANA"
+        "BUST",
+        "MOBILE",
+        "RELIEF",
+        "STATUE"
       ]
     },
     {
-      "title": "FAMOUS PAINTINGS",
+      "title": "AMERICAN FOOTBALL POSITIONS",
       "words": [
-        "AMERICANGOTHIC",
-        "CAMPBELL'SSOUPCAN",
-        "SUNFLOWERS",
-        "THESCREAM"
+        "END",
+        "GUARD",
+        "SAFETY",
+        "TACKLE"
       ]
     },
     {
-      "title": "DOUBLE MISNOMERS (THAT ARE NEITHER PART OF THEIR NAME)",
+      "title": "STARTS OF BEDDING",
       "words": [
-        "CHINESECHECKERS",
-        "ENGLISHHORN",
-        "MANTISSHRIMP",
-        "SWEETBREAD"
+        "BLANK",
+        "COMFORT",
+        "PILL",
+        "SHE"
       ]
     }
   ]
