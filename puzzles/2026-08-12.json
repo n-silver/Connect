@@ -1,0 +1,41 @@
+{
+  "date": "2026-08-12",
+  "categories": [
+    {
+      "title": "KINDS OF STRIPS",
+      "words": [
+        "BACON",
+        "COMIC",
+        "FILM",
+        "MBIUS"
+      ]
+    },
+    {
+      "title": "THINGS ON STICKS",
+      "words": [
+        "FLAG",
+        "HOBBYHORSE",
+        "PINWHEEL",
+        "POPSICLE"
+      ]
+    },
+    {
+      "title": "ONLINE AD FORMATS",
+      "words": [
+        "BANNER",
+        "INTERSTITIAL",
+        "OVERLAY",
+        "POP-UP"
+      ]
+    },
+    {
+      "title": "___ BAR",
+      "words": [
+        "CANDY",
+        "SALAD",
+        "SPACE",
+        "SPORTS"
+      ]
+    }
+  ]
+}
