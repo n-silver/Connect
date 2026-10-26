@@ -1,40 +1,40 @@
 {
-  "date": "2026-08-12",
+  "date": "2026-08-13",
   "categories": [
     {
-      "title": "KINDS OF STRIPS",
+      "title": "THINGS TO BRING ON A TREK",
       "words": [
-        "BACON",
-        "COMIC",
-        "FILM",
-        "MBIUS"
+        "BACKPACK",
+        "COMPASS",
+        "HIKINGBOOTS",
+        "WATERBOTTLE"
       ]
     },
     {
-      "title": "THINGS ON STICKS",
+      "title": "MIST MAKERS",
       "words": [
-        "FLAG",
-        "HOBBYHORSE",
-        "PINWHEEL",
-        "POPSICLE"
+        "DRYICE",
+        "FOGMACHINE",
+        "HUMIDIFIER",
+        "WATERFALL"
       ]
     },
     {
-      "title": "ONLINE AD FORMATS",
+      "title": "ANGER",
       "words": [
-        "BANNER",
-        "INTERSTITIAL",
-        "OVERLAY",
-        "POP-UP"
+        "INCENSE",
+        "NETTLE",
+        "PIQUE",
+        "WINDUP"
       ]
     },
     {
-      "title": "___ BAR",
+      "title": "THINGS WITH MIRRORS",
       "words": [
-        "CANDY",
-        "SALAD",
-        "SPACE",
-        "SPORTS"
+        "DISCOBALL",
+        "DRESSINGROOM",
+        "KALEIDOSCOPE",
+        "MEDICINECABINET"
       ]
     }
   ]
