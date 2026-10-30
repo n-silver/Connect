@@ -1,0 +1,41 @@
+{
+  "date": "2026-08-17",
+  "categories": [
+    {
+      "title": "THINGS YOU PUT COINS INTO",
+      "words": [
+        "PARKINGMETER",
+        "PAYPHONE",
+        "PIGGYBANK",
+        "WISHINGWELL"
+      ]
+    },
+    {
+      "title": "ASSOCIATED WITH PENGUINS",
+      "words": [
+        "ANTARCTICA",
+        "EMPEROR",
+        "TUXEDO",
+        "WADDLE"
+      ]
+    },
+    {
+      "title": "ENDS OF FAMOUS FONTS",
+      "words": [
+        "GOTHIC",
+        "ROMAN",
+        "SANS",
+        "TYPEWRITER"
+      ]
+    },
+    {
+      "title": "THINGS THAT FEATURE THREE COLORS",
+      "words": [
+        "CALICO",
+        "CANDYCORN",
+        "NEAPOLITAN",
+        "TRAFFICLIGHT"
+      ]
+    }
+  ]
+}
