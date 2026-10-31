@@ -1,40 +1,40 @@
 {
-  "date": "2026-08-17",
+  "date": "2026-08-18",
   "categories": [
     {
-      "title": "THINGS YOU PUT COINS INTO",
+      "title": "PARTS OF A CAMERA",
       "words": [
-        "PARKINGMETER",
-        "PAYPHONE",
-        "PIGGYBANK",
-        "WISHINGWELL"
+        "FLASH",
+        "LENS",
+        "SHUTTER",
+        "VIEWFINDER"
       ]
     },
     {
-      "title": "ASSOCIATED WITH PENGUINS",
+      "title": "AROUND A THEATER STAGE",
       "words": [
-        "ANTARCTICA",
-        "EMPEROR",
-        "TUXEDO",
-        "WADDLE"
+        "BACKDROP",
+        "CURTAIN",
+        "PIT",
+        "WINGS"
       ]
     },
     {
-      "title": "ENDS OF FAMOUS FONTS",
+      "title": "THROW ___",
       "words": [
-        "GOTHIC",
-        "ROMAN",
-        "SANS",
-        "TYPEWRITER"
+        "HANDS",
+        "PILLOW",
+        "RUG",
+        "SHADE"
       ]
     },
     {
-      "title": "THINGS THAT FEATURE THREE COLORS",
+      "title": "FRUIT WITH FIRST LETTER CHANGED",
       "words": [
-        "CALICO",
-        "CANDYCORN",
-        "NEAPOLITAN",
-        "TRAFFICLIGHT"
+        "DEMON",
+        "DRAPE",
+        "GLUM",
+        "GRANGE"
       ]
     }
   ]
