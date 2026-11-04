@@ -1,0 +1,41 @@
+{
+  "date": "2026-08-22",
+  "categories": [
+    {
+      "title": "KEEP GOING",
+      "words": [
+        "CARRYON",
+        "CONTINUE",
+        "PROCEED",
+        "RESUME"
+      ]
+    },
+    {
+      "title": "THINGS WITH WHEELS",
+      "words": [
+        "OFFICECHAIR",
+        "ROLLERBAG",
+        "SHOPPINGCART",
+        "STROLLER"
+      ]
+    },
+    {
+      "title": "THINGS A SERVER BRINGS AT A RESTAURANT",
+      "words": [
+        "CHECK",
+        "FOOD",
+        "MENU",
+        "TAPWATER"
+      ]
+    },
+    {
+      "title": "ENDING IN MENU BAR HEADINGS",
+      "words": [
+        "CREDIT",
+        "INTERVIEW",
+        "PROFILE",
+        "WHELP"
+      ]
+    }
+  ]
+}

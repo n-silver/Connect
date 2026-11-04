@@ -1,40 +1,40 @@
 {
-  "date": "2026-08-21",
+  "date": "2026-08-22",
   "categories": [
     {
-      "title": "STEAL",
+      "title": "KEEP GOING",
       "words": [
-        "BOOST",
-        "PALM",
-        "POCKET",
-        "SWIPE"
+        "CARRYON",
+        "CONTINUE",
+        "PROCEED",
+        "RESUME"
       ]
     },
     {
-      "title": "PASTA SHAPES",
+      "title": "THINGS WITH WHEELS",
       "words": [
-        "BOWTIE",
-        "ELBOW",
-        "SHELL",
-        "WAGONWHEEL"
+        "OFFICECHAIR",
+        "ROLLERBAG",
+        "SHOPPINGCART",
+        "STROLLER"
       ]
     },
     {
-      "title": "FICTIONAL TOMS",
+      "title": "THINGS A SERVER BRINGS AT A RESTAURANT",
       "words": [
-        "RIDDLE",
-        "SAWYER",
-        "SWIFT",
-        "THUMB"
+        "CHECK",
+        "FOOD",
+        "MENU",
+        "TAPWATER"
       ]
     },
     {
-      "title": "THINGS THAT CAN BE SNAPPED",
+      "title": "ENDING IN MENU BAR HEADINGS",
       "words": [
-        "FINGERS",
-        "FOOTBALL",
-        "GLOWSTICK",
-        "RUBBERBAND"
+        "CREDIT",
+        "INTERVIEW",
+        "PROFILE",
+        "WHELP"
       ]
     }
   ]
