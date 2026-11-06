@@ -1,0 +1,41 @@
+{
+  "date": "2026-08-24",
+  "categories": [
+    {
+      "title": "FLOWERS",
+      "words": [
+        "ANEMONE",
+        "LOTUS",
+        "NARCISSUS",
+        "ROSE"
+      ]
+    },
+    {
+      "title": "KINDS OF HEELS",
+      "words": [
+        "KITTEN",
+        "PLATFORM",
+        "SPIKE",
+        "WEDGE"
+      ]
+    },
+    {
+      "title": "TEARDROP-SHAPED THINGS",
+      "words": [
+        "PEAR",
+        "RAINDROP",
+        "SPEEDBAG",
+        "UVULA"
+      ]
+    },
+    {
+      "title": "LIQUORS WITH LAST LETTERS CHANGED",
+      "words": [
+        "BRANDO",
+        "GIG",
+        "RUN",
+        "WHISKER"
+      ]
+    }
+  ]
+}
