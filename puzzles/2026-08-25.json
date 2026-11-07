@@ -1,0 +1,41 @@
+{
+  "date": "2026-08-25",
+  "categories": [
+    {
+      "title": "COMPOSITION",
+      "words": [
+        "CONSTITUTION",
+        "FABRIC",
+        "MAKEUP",
+        "STRUCTURE"
+      ]
+    },
+    {
+      "title": "COPY",
+      "words": [
+        "BACKUP",
+        "EXTRA",
+        "REPLACEMENT",
+        "SPARE"
+      ]
+    },
+    {
+      "title": "KINDS OF TRUCKS",
+      "words": [
+        "FLATBED",
+        "PICKUP",
+        "SEMI",
+        "TANKER"
+      ]
+    },
+    {
+      "title": "ENDING IN PARTS OF THE EYE",
+      "words": [
+        "HOTROD",
+        "OSIRIS",
+        "TRAFFICCONE",
+        "WOOLENS"
+      ]
+    }
+  ]
+}
